@@ -3,21 +3,31 @@ if (getUser()) {
   window.location.href = 'index.html';
 }
 
-const authContainer = document.getElementById('authContainer');
-const switchToSignup = document.getElementById('switchToSignup');
-const switchToLogin = document.getElementById('switchToLogin');
+const loginTabBtn = document.getElementById('loginTabBtn');
+const signupTabBtn = document.getElementById('signupTabBtn');
+const loginView = document.getElementById('loginView');
+const signupView = document.getElementById('signupView');
 
-// Toggle sliding view states
-if (switchToSignup && switchToLogin && authContainer) {
-  switchToSignup.addEventListener('click', () => {
-    authContainer.classList.add('signup-active');
-    document.title = 'Sign Up - KnowledgeShare';
-  });
-
-  switchToLogin.addEventListener('click', () => {
-    authContainer.classList.remove('signup-active');
+// Switch tabs
+function switchAuthTab(target) {
+  if (target === 'login') {
+    loginTabBtn.classList.add('active');
+    signupTabBtn.classList.remove('active');
+    loginView.classList.add('active');
+    signupView.classList.remove('active');
     document.title = 'Sign In - KnowledgeShare';
-  });
+  } else {
+    signupTabBtn.classList.add('active');
+    loginTabBtn.classList.remove('active');
+    signupView.classList.add('active');
+    loginView.classList.remove('active');
+    document.title = 'Sign Up - KnowledgeShare';
+  }
+}
+
+if (loginTabBtn && signupTabBtn) {
+  loginTabBtn.addEventListener('click', () => switchAuthTab('login'));
+  signupTabBtn.addEventListener('click', () => switchAuthTab('signup'));
 }
 
 // Handle login submission

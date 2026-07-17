@@ -12,20 +12,20 @@
   <header>
     <div class="navbar">
       <a href="index.html" class="nav-brand">KnowledgeShare</a>
+      
+      <!-- Streams list in Navbar -->
+      <nav class="nav-streams" id="navStreams">
+        <div class="nav-streams-indicator" id="navStreamsIndicator"></div>
+        <a href="index.html" class="stream-tab" data-stream="All">All</a>
+        <a href="index.html?stream=Technology" class="stream-tab" data-stream="Technology">Technology</a>
+        <a href="index.html?stream=Medical" class="stream-tab" data-stream="Medical">Medical</a>
+        <a href="index.html?stream=Science" class="stream-tab" data-stream="Science">Science</a>
+        <a href="index.html?stream=Entertainment" class="stream-tab" data-stream="Entertainment">Entertainment</a>
+        <a href="index.html?stream=Trending" class="stream-tab" data-stream="Trending">Trending</a>
+        <a href="index.html?stream=Business" class="stream-tab" data-stream="Business">Business</a>
+      </nav>
+
       <div class="nav-links">
-        <div class="dropdown" id="categoryDropdown">
-          <button class="dropdown-trigger" id="dropdownTrigger" style="font-family: var(--font-sans);">
-            Streams <span style="font-size: 10px;">▼</span>
-          </button>
-          <div class="dropdown-menu" id="dropdownMenu">
-            <a class="dropdown-item" href="index.html?stream=Technology">Technology</a>
-            <a class="dropdown-item" href="index.html?stream=Medical">Medical</a>
-            <a class="dropdown-item" href="index.html?stream=Science">Science</a>
-            <a class="dropdown-item" href="index.html?stream=Entertainment">Entertainment</a>
-            <a class="dropdown-item" href="index.html?stream=Trending">Trending</a>
-            <a class="dropdown-item" href="index.html?stream=Business">Business</a>
-          </div>
-        </div>
         <a href="create.html" class="nav-link" id="writeLink">Write</a>
         <div id="authArea">
           <!-- Populated dynamically by api.js -->

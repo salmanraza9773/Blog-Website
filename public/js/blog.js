@@ -100,6 +100,12 @@ async function loadBlogDetails(blogId) {
     const blog = data.blog;
     const isLiked = data.isLiked;
     
+    // Highlight the active stream category in the global header
+    window.currentBlogStream = blog.stream;
+    if (typeof initNavbarStreams === 'function') {
+      initNavbarStreams();
+    }
+
     document.title = `${blog.title} - KnowledgeShare`;
     
     const coverHtml = blog.cover_image_path ? 

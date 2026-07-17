@@ -155,22 +155,86 @@ function initActiveNavLink() {
   });
 }
 
+// Global navbar indicator updates
+function updateNavIndicator() {
+  const navStreams = document.getElementById('navStreams');
+  const indicator = document.getElementById('navStreamsIndicator');
+  if (!navStreams || !indicator) return;
+
+  const activeTab = navStreams.querySelector('.stream-tab.active');
+  if (activeTab) {
+    indicator.style.left = `${activeTab.offsetLeft}px`;
+    indicator.style.width = `${activeTab.offsetWidth}px`;
+    indicator.classList.add('active');
+  } else {
+    indicator.classList.remove('active');
+  }
+}
+
+// Initialize persistent streams lists
+function initNavbarStreams() {
+  const navStreams = document.getElementById('navStreams');
+  if (!navStreams) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const streamParam = params.get('stream');
+  const tabs = navStreams.querySelectorAll('.stream-tab');
+  const indicator = document.getElementById('navStreamsIndicator');
+
+  // Highlight active
+  tabs.forEach(tab => {
+    const streamName = tab.getAttribute('data-stream');
+    let isActive = false;
+
+    if (window.location.pathname.endsWith('blog.html')) {
+      isActive = (window.currentBlogStream === streamName);
+    } else if (streamParam) {
+      isActive = (streamName === streamParam);
+    } else if (!streamParam && streamName === 'All' && 
+               (window.location.pathname.endsWith('index.html') || 
+                window.location.pathname.endsWith('/') || 
+                window.location.pathname === '')) {
+      isActive = true;
+    }
+
+    if (isActive) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+
+  // Position indicator
+  setTimeout(updateNavIndicator, 150);
+  window.addEventListener('resize', updateNavIndicator);
+
+  // Snapping listeners
+  tabs.forEach(tab => {
+    tab.addEventListener('mouseenter', () => {
+      if (indicator) {
+        indicator.style.left = `${tab.offsetLeft}px`;
+        indicator.style.width = `${tab.offsetWidth}px`;
+        indicator.classList.add('active');
+      }
+    });
+  });
+
+  navStreams.addEventListener('mouseleave', () => {
+    const activeTab = navStreams.querySelector('.stream-tab.active');
+    if (indicator) {
+      if (activeTab) {
+        indicator.style.left = `${activeTab.offsetLeft}px`;
+        indicator.style.width = `${activeTab.offsetWidth}px`;
+        indicator.classList.add('active');
+      } else {
+        indicator.classList.remove('active');
+      }
+    }
+  });
+}
+
 // Init global header menu overlays
 function initHeader() {
-  const dropdownTrigger = document.getElementById('dropdownTrigger');
-  const dropdownMenu = document.getElementById('dropdownMenu');
-  
-  if (dropdownTrigger && dropdownMenu) {
-    dropdownTrigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      dropdownMenu.classList.toggle('show');
-    });
-
-    document.addEventListener('click', () => {
-      dropdownMenu.classList.remove('show');
-    });
-  }
-
   const authArea = document.getElementById('authArea');
   if (authArea) {
     const user = getUser();
@@ -217,7 +281,6 @@ function initHeader() {
 
 // Global Image Fallback Handler
 function handleImageError(imgElement, streamName) {
-  // Prevent loops
   imgElement.onerror = null;
 
   const placeholder = document.createElement('div');
@@ -239,4 +302,5 @@ window.addEventListener('DOMContentLoaded', () => {
   initScrollHeader();
   initActiveNavLink();
   initHeader();
+  initNavbarStreams();
 });

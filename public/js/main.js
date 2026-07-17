@@ -115,25 +115,12 @@ async function loadBlogs(stream) {
   }
 }
 
-// Calculate and position the active category indicator pill
-function updateStreamIndicator() {
-  const streamBar = document.getElementById('streamBar');
-  const indicator = document.getElementById('streamIndicator');
-  if (!streamBar || !indicator) return;
-
-  const activeTab = streamBar.querySelector('.stream-tab.active');
-  if (activeTab) {
-    indicator.style.left = `${activeTab.offsetLeft}px`;
-    indicator.style.width = `${activeTab.offsetWidth}px`;
-    indicator.classList.add('active');
-  } else {
-    indicator.classList.remove('active');
-  }
-}
-
-// Handle active subnav state
+// Handle active subnav state in the main navbar
 function setActiveTab(stream) {
-  const tabs = document.querySelectorAll('.stream-tab');
+  const navStreams = document.getElementById('navStreams');
+  if (!navStreams) return;
+  
+  const tabs = navStreams.querySelectorAll('.stream-tab');
   tabs.forEach(tab => {
     if (tab.getAttribute('data-stream') === stream) {
       tab.classList.add('active');
@@ -141,16 +128,19 @@ function setActiveTab(stream) {
       tab.classList.remove('active');
     }
   });
-  updateStreamIndicator();
+  updateNavIndicator();
 }
 
 // Set up listeners
 function setupTabs() {
-  const streamBar = document.getElementById('streamBar');
-  if (streamBar) {
-    streamBar.addEventListener('click', (e) => {
+  const navStreams = document.getElementById('navStreams');
+  if (navStreams) {
+    navStreams.addEventListener('click', (e) => {
       const tab = e.target.closest('.stream-tab');
       if (!tab) return;
+      
+      // Prevent default page reload
+      e.preventDefault();
       
       const stream = tab.getAttribute('data-stream');
       currentStream = stream;
@@ -170,9 +160,6 @@ function setupTabs() {
     setActiveTab(stream);
     loadBlogs(stream);
   });
-
-  // Watch for window resize to fix indicators positioning
-  window.addEventListener('resize', updateStreamIndicator);
 }
 
 // Initial script runner
@@ -184,5 +171,5 @@ window.addEventListener('DOMContentLoaded', () => {
   setupTabs();
   
   // Wait a small duration to calculate initial dimensions
-  setTimeout(updateStreamIndicator, 150);
+  setTimeout(updateNavIndicator, 200);
 });

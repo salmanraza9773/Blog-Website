@@ -306,63 +306,48 @@ header.scrolled {
   color: var(--text-primary);
 }
 
-/* Category Sub-navigation with Sliding Indicator */
-.sub-nav {
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-primary);
+/* Persistent Header Streams Navigation with Sliding Underline */
+.nav-streams {
   position: relative;
-  transition: background-color 0.4s var(--ease-custom);
-}
-
-.stream-bar {
-  position: relative;
-  max-width: var(--max-width-layout);
-  margin: 0 auto;
-  padding: 12px 24px;
   display: flex;
-  gap: 8px;
+  gap: 20px;
+  align-items: center;
   overflow-x: auto;
-  white-space: nowrap;
   scrollbar-width: none;
+  white-space: nowrap;
 }
 
-.stream-bar::-webkit-scrollbar {
+.nav-streams::-webkit-scrollbar {
   display: none;
 }
 
-.stream-tab {
+.nav-streams .stream-tab {
   position: relative;
-  z-index: 2;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
+  padding: 8px 2px;
+  text-decoration: none;
+  transition: color 0.3s;
   cursor: pointer;
-  padding: 8px 18px;
-  border-radius: 99px;
-  transition: color 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.stream-tab:hover {
+.nav-streams .stream-tab:hover,
+.nav-streams .stream-tab.active {
   color: var(--text-primary);
 }
 
-.stream-tab.active {
-  color: var(--bg-primary);
-}
-
-.stream-pill-indicator {
+.nav-streams-indicator {
   position: absolute;
-  z-index: 1;
-  height: 36px;
+  bottom: 0;
+  height: 2px;
   background-color: var(--accent-color);
-  border-radius: 99px;
   transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
-  pointer-events: none;
   opacity: 0;
-  top: 12px; /* must align vertically with tab padding */
+  pointer-events: none;
 }
 
-.stream-pill-indicator.active {
+.nav-streams-indicator.active {
   opacity: 1;
 }
 
@@ -943,9 +928,9 @@ header.scrolled {
   border-radius: 8px;
 }
 
-/* Auth Cards Slider Transitions */
+/* Auth Tabbed Panel Transitions */
 .auth-container {
-  max-width: 420px;
+  max-width: 440px;
   margin: 60px auto;
   border: 1px solid var(--border-color);
   border-radius: 16px;
@@ -953,26 +938,46 @@ header.scrolled {
   box-shadow: var(--shadow-lg);
   padding: 40px;
   position: relative;
-  overflow: hidden;
-  min-height: 520px;
   transition: background-color 0.4s, border-color 0.4s;
 }
 
-.auth-forms-slider {
+.auth-tabs {
   display: flex;
-  width: 200%;
-  transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 28px;
+}
+
+.auth-tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 12px 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s var(--ease-custom);
+  text-align: center;
+}
+
+.auth-tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.auth-tab-btn.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent-color);
+  font-weight: 600;
 }
 
 .auth-form-panel {
-  width: 50%;
-  flex-shrink: 0;
-  transition: opacity 0.5s var(--ease-custom);
-  opacity: 1;
+  display: none;
+  animation: fadeIn 0.4s var(--ease-custom);
 }
 
-.auth-container.signup-active .auth-forms-slider {
-  transform: translateX(-50%);
+.auth-form-panel.active {
+  display: block;
 }
 
 .auth-title {
