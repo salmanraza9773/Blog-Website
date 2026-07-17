@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KnowledgeShare - Share your insights</title>
+  <meta name="description" content="A clean, minimalist platform for writing and discovering deep articles across diverse topics.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  
+  <!-- Universal Navigation Bar -->
+  <header>
+    <div class="navbar">
+      <a href="index.html" class="nav-brand">KnowledgeShare</a>
+      <div class="nav-links">
+        <div class="dropdown" id="categoryDropdown">
+          <button class="dropdown-trigger" id="dropdownTrigger" style="font-family: var(--font-sans);">
+            Streams <span style="font-size: 10px;">▼</span>
+          </button>
+          <div class="dropdown-menu" id="dropdownMenu">
+            <a class="dropdown-item" href="index.html?stream=Technology">Technology</a>
+            <a class="dropdown-item" href="index.html?stream=Medical">Medical</a>
+            <a class="dropdown-item" href="index.html?stream=Science">Science</a>
+            <a class="dropdown-item" href="index.html?stream=Entertainment">Entertainment</a>
+            <a class="dropdown-item" href="index.html?stream=Trending">Trending</a>
+            <a class="dropdown-item" href="index.html?stream=Business">Business</a>
+          </div>
+        </div>
+        <a href="create.html" class="nav-link" id="writeLink">Write</a>
+        <div id="authArea">
+          <!-- Populated dynamically by api.js -->
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="sub-nav">
+    <div class="stream-bar" id="streamBar">
+      <div class="stream-pill-indicator" id="streamIndicator"></div>
+      <div class="stream-tab active" data-stream="All">All</div>
+      <div class="stream-tab" data-stream="Technology">Technology</div>
+      <div class="stream-tab" data-stream="Medical">Medical</div>
+      <div class="stream-tab" data-stream="Science">Science</div>
+      <div class="stream-tab" data-stream="Entertainment">Entertainment</div>
+      <div class="stream-tab" data-stream="Trending">Trending</div>
+      <div class="stream-tab" data-stream="Business">Business</div>
+    </div>
+  </nav>
+
+  <!-- Main Feed Container -->
+  <main class="container">
+    <div class="feed-layout">
+      <!-- Blog feed items -->
+      <section>
+        <div class="blog-list" id="blogList">
+          <div class="text-center text-muted" style="padding: 40px 0;">Loading feed articles...</div>
+        </div>
+      </section>
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div>
+          <h3 class="sidebar-title">Trending Streams</h3>
+          <div id="trendingStreams" class="stream-grid" style="margin-top: 12px;">
+            <div class="stream-card" onclick="window.location.href='index.html?stream=Technology'">Technology</div>
+            <div class="stream-card" onclick="window.location.href='index.html?stream=Science'">Science</div>
+            <div class="stream-card" onclick="window.location.href='index.html?stream=Business'">Business</div>
+          </div>
+        </div>
+        <div>
+          <h3 class="sidebar-title">About KnowledgeShare</h3>
+          <p class="text-muted" style="font-size: 14px; line-height: 1.5;">
+            KnowledgeShare is a publication designed for writers who appreciate the art of minimalist presentation, readability, and clean visual borders.
+          </p>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <div id="toastNotification" class="toast"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

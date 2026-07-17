@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Story - KnowledgeShare</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Universal Navigation Bar -->
+  <header>
+    <div class="navbar">
+      <a href="index.html" class="nav-brand">KnowledgeShare</a>
+      <div class="nav-links">
+        <div class="dropdown" id="categoryDropdown">
+          <button class="dropdown-trigger" id="dropdownTrigger" style="font-family: var(--font-sans);">
+            Streams <span style="font-size: 10px;">▼</span>
+          </button>
+          <div class="dropdown-menu" id="dropdownMenu">
+            <a class="dropdown-item" href="index.html?stream=Technology">Technology</a>
+            <a class="dropdown-item" href="index.html?stream=Medical">Medical</a>
+            <a class="dropdown-item" href="index.html?stream=Science">Science</a>
+            <a class="dropdown-item" href="index.html?stream=Entertainment">Entertainment</a>
+            <a class="dropdown-item" href="index.html?stream=Trending">Trending</a>
+            <a class="dropdown-item" href="index.html?stream=Business">Business</a>
+          </div>
+        </div>
+        <a href="create.html" class="nav-link" id="writeLink">Write</a>
+        <div id="authArea">
+          <!-- Populated dynamically by api.js -->
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Creator Portal Wrapper -->
+  <main class="editor-container">
+    <div class="editor-header">
+      <span class="text-muted" style="font-size: 14px;" id="editorStatus">Drafting in Private</span>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <button id="publishBtn" class="btn btn-primary">Publish</button>
+      </div>
+    </div>
+
+    <!-- Drag & Drop Uploader -->
+    <div class="upload-panel" id="uploadPanel">
+      <div class="placeholder-text" id="uploadPlaceholder">
+        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin: 0 auto 8px auto;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        <span>Drag & drop a cover image here, or <strong>browse files</strong></span>
+        <span style="font-size: 11px;">Supports JPEG, PNG, WEBP (Max 5MB)</span>
+      </div>
+      <input type="file" id="coverFileInput" accept="image/*" style="display: none;">
+      <img id="coverPreviewImg" src="" alt="Cover Preview" style="display: none;">
+    </div>
+
+    <!-- Stream Picker Option -->
+    <div style="margin-bottom: 24px;">
+      <label class="form-label" style="display: block; margin-bottom: 8px;">Select Stream</label>
+      <select id="streamSelect" class="editor-select">
+        <option value="Technology">Technology</option>
+        <option value="Medical">Medical</option>
+        <option value="Science">Science</option>
+        <option value="Entertainment">Entertainment</option>
+        <option value="Trending">Trending</option>
+        <option value="Business">Business</option>
+      </select>
+    </div>
+
+    <!-- Layout Mode Tabs -->
+    <div class="editor-tabs-bar">
+      <button class="editor-tab-btn active" id="editTabBtn">Edit Story</button>
+      <button class="editor-tab-btn" id="splitTabBtn">Split View</button>
+      <button class="editor-tab-btn" id="previewTabBtn">Preview Story</button>
+    </div>
+
+    <!-- Creator Workspaces -->
+    <div class="creator-layout" id="creatorLayout">
+      
+      <!-- Write Pane -->
+      <div id="editorPane">
+        <!-- Title Input -->
+        <input type="text" id="editorTitle" class="editor-title-input serif" placeholder="Title" autofocus>
+
+        <!-- Markdown Formatting Tooltip Buttons -->
+        <div class="editor-toolbar">
+          <button class="btn btn-text" onclick="insertMarkdown('**', '**')" title="Bold"><b>B</b></button>
+          <button class="btn btn-text" onclick="insertMarkdown('*', '*')" title="Italic"><i>I</i></button>
+          <button class="btn btn-text" onclick="insertMarkdown('## ', '')" title="Heading 2"><b>H2</b></button>
+          <button class="btn btn-text" onclick="insertLinkMD()" title="Insert Link">🔗</button>
+          <button class="btn btn-text" onclick="insertMarkdown('> ', '')" title="Blockquote"><b>“</b></button>
+          <button class="btn btn-text" onclick="insertMarkdown('\`', '\`')" title="Inline Code"><code>&lt;/&gt;</code></button>
+        </div>
+
+        <!-- TextArea Markdown Canvas -->
+        <textarea id="editorContent" class="editor-content-area serif" placeholder="Tell your story using Markdown..."></textarea>
+      </div>
+
+      <!-- HTML Real-time Preview Pane -->
+      <div class="preview-pane" id="previewPane" style="display: none;">
+        <div class="article-header">
+          <span class="badge" id="previewStreamBadge">Technology</span>
+          <h1 class="article-title serif" id="previewTitle" style="margin-top: 16px;">Title</h1>
+        </div>
+        <img class="article-cover" id="previewCoverImg" src="" alt="Cover" style="display: none; width: 100%; max-height: 250px; object-fit: cover; border-radius: 8px; margin-bottom: 24px; border: 1px solid var(--border-color);">
+        <div class="article-content serif" id="previewBodyContent">
+          <!-- Live parsed HTML -->
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="toastNotification" class="toast"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/create.js"></script>
+</body>
+</html>

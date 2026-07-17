@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In - KnowledgeShare</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Universal Navigation Bar -->
+  <header>
+    <div class="navbar">
+      <a href="index.html" class="nav-brand">KnowledgeShare</a>
+      <div class="nav-links">
+        <div class="dropdown" id="categoryDropdown">
+          <button class="dropdown-trigger" id="dropdownTrigger" style="font-family: var(--font-sans);">
+            Streams <span style="font-size: 10px;">▼</span>
+          </button>
+          <div class="dropdown-menu" id="dropdownMenu">
+            <a class="dropdown-item" href="index.html?stream=Technology">Technology</a>
+            <a class="dropdown-item" href="index.html?stream=Medical">Medical</a>
+            <a class="dropdown-item" href="index.html?stream=Science">Science</a>
+            <a class="dropdown-item" href="index.html?stream=Entertainment">Entertainment</a>
+            <a class="dropdown-item" href="index.html?stream=Trending">Trending</a>
+            <a class="dropdown-item" href="index.html?stream=Business">Business</a>
+          </div>
+        </div>
+        <a href="create.html" class="nav-link" id="writeLink">Write</a>
+        <div id="authArea">
+          <!-- Populated dynamically by api.js -->
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Auth Card Slider Wrapper -->
+  <main class="auth-container" id="authContainer">
+    <div class="auth-forms-slider">
+      
+      <!-- Slide 1: Login -->
+      <div class="auth-form-panel" id="loginView">
+        <h2 class="auth-title serif">Welcome back.</h2>
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="loginEmail" class="form-label">Email Address</label>
+            <input type="email" id="loginEmail" class="form-input" required placeholder="name@example.com">
+          </div>
+          <div class="form-group">
+            <label for="loginPassword" class="form-label">Password</label>
+            <input type="password" id="loginPassword" class="form-input" required placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px; border-radius: 8px;">Sign In</button>
+        </form>
+        <p class="auth-switch-text">
+          No account? <span class="auth-switch-link" id="switchToSignup">Create one</span>
+        </p>
+      </div>
+
+      <!-- Slide 2: Signup -->
+      <div class="auth-form-panel" id="signupView">
+        <h2 class="auth-title serif">Join KnowledgeShare.</h2>
+        <form id="signupForm">
+          <div class="form-group">
+            <label for="signupUsername" class="form-label">Username</label>
+            <input type="text" id="signupUsername" class="form-input" required placeholder="username" pattern="[a-zA-Z0-9_]{3,20}" title="3-20 alphanumeric characters or underscore">
+          </div>
+          <div class="form-group">
+            <label for="signupEmail" class="form-label">Email Address</label>
+            <input type="email" id="signupEmail" class="form-input" required placeholder="name@example.com">
+          </div>
+          <div class="form-group">
+            <label for="signupPassword" class="form-label">Password</label>
+            <input type="password" id="signupPassword" class="form-input" required placeholder="••••••••" minlength="6">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px; border-radius: 8px;">Create Account</button>
+        </form>
+        <p class="auth-switch-text">
+          Already have an account? <span class="auth-switch-link" id="switchToLogin">Sign in</span>
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="toastNotification" class="toast"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Story - KnowledgeShare</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Universal Navigation Bar -->
+  <header>
+    <div class="navbar">
+      <a href="index.html" class="nav-brand">KnowledgeShare</a>
+      <div class="nav-links">
+        <div class="dropdown" id="categoryDropdown">
+          <button class="dropdown-trigger" id="dropdownTrigger" style="font-family: var(--font-sans);">
+            Streams <span style="font-size: 10px;">▼</span>
+          </button>
+          <div class="dropdown-menu" id="dropdownMenu">
+            <a class="dropdown-item" href="index.html?stream=Technology">Technology</a>
+            <a class="dropdown-item" href="index.html?stream=Medical">Medical</a>
+            <a class="dropdown-item" href="index.html?stream=Science">Science</a>
+            <a class="dropdown-item" href="index.html?stream=Entertainment">Entertainment</a>
+            <a class="dropdown-item" href="index.html?stream=Trending">Trending</a>
+            <a class="dropdown-item" href="index.html?stream=Business">Business</a>
+          </div>
+        </div>
+        <a href="create.html" class="nav-link" id="writeLink">Write</a>
+        <div id="authArea">
+          <!-- Populated dynamically by api.js -->
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Article View Container -->
+  <main class="article-container" id="articleContainer">
+    <div class="text-center text-muted" style="padding: 100px 0;">Loading article...</div>
+  </main>
+
+  <!-- Related Reads Bottom Section -->
+  <section class="related-reads-section">
+    <div class="related-reads-container">
+      <h3 class="serif" style="font-size: 20px; font-weight: 700; margin-bottom: 24px; color: var(--text-primary);">Related Reads</h3>
+      <div class="related-grid" id="relatedGrid">
+        <!-- Dynamically populated -->
+        <div class="text-muted">Loading suggestions...</div>
+      </div>
+    </div>
+  </section>
+
+  <div id="toastNotification" class="toast"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/blog.js"></script>
+</body>
+</html>
