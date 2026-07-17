@@ -29,6 +29,17 @@ const authRoutes = require('./routes/auth');
 const blogRoutes = require('./routes/blogs');
 const userRoutes = require('./routes/users');
 
+// Database initialization middleware for serverless/cold starts
+app.use(async (req, res, next) => {
+  try {
+    await initDB();
+    next();
+  } catch (err) {
+    console.error('Database initialization middleware error:', err);
+    res.status(500).json({ error: 'Database initialization failed: ' + err.message });
+  }
+});
+
 // Map Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/blogs', blogRoutes);
@@ -47,4 +58,8 @@ async function startServer() {
   }
 }
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = app;

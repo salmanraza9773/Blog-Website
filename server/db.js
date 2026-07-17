@@ -1,14 +1,34 @@
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const path = require('path');
+const fs = require('fs');
 
 let db = null;
 
 async function initDB() {
   if (db) return db;
   
+  let dbPath = path.join(__dirname, 'blog.db');
+  
+  if (process.env.VERCEL) {
+    const tempDbPath = path.join('/tmp', 'blog.db');
+    if (!fs.existsSync(tempDbPath)) {
+      try {
+        if (fs.existsSync(dbPath)) {
+          fs.copyFileSync(dbPath, tempDbPath);
+          console.log('Database successfully copied to writable /tmp/blog.db');
+        } else {
+          console.log('No seed database found at source; creating clean database in /tmp/blog.db');
+        }
+      } catch (err) {
+        console.warn('Warning: Failed to copy database to /tmp:', err);
+      }
+    }
+    dbPath = tempDbPath;
+  }
+  
   db = await open({
-    filename: path.join(__dirname, 'blog.db'),
+    filename: dbPath,
     driver: sqlite3.Database
   });
 
