@@ -15,11 +15,27 @@ function parseMarkdown(md) {
   if (!md) return '';
   let html = md;
   
-  // Escaping raw HTML tags to prevent XSS (except allowed tags)
+  // Store valid safe HTML tags so they aren't double-escaped
+  const htmlTokens = [];
+  const tokenPlaceholder = (idx) => `___HTML_TOKEN_${idx}___`;
+
+  // Preserve safe HTML tags (div, span, headings, lists, tables, etc.)
+  html = html.replace(/<\/?(div|span|h[1-6]|p|ul|ol|li|strong|em|blockquote|table|thead|tbody|tr|th|td|a|svg|path|code|pre|img|br|hr)[^>]*>/gi, (match) => {
+    const idx = htmlTokens.length;
+    htmlTokens.push(match);
+    return tokenPlaceholder(idx);
+  });
+
+  // Escape remaining raw `<` and `>` characters to prevent XSS
   html = html
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+
+  // Restore preserved HTML tokens
+  htmlTokens.forEach((token, idx) => {
+    html = html.replace(tokenPlaceholder(idx), token);
+  });
 
   // Code blocks (```code```)
   html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
@@ -213,6 +229,16 @@ async function loadBlogDetails(blogId) {
       `;
     }
 
+    // Author or Admin action buttons
+    const user = getUser();
+    const canManage = user && (user.role === 'admin' || user.id === blog.author_id);
+    const manageControlsHtml = canManage ? `
+      <div style="margin-top: 12px;">
+        <a href="create.html?edit=${blog.id}" class="action-btn-sm" style="display:inline-block; padding: 6px 14px; border-radius: 99px; text-decoration:none;">✏️ Edit Article</a>
+        <button id="deleteArticleBtn" class="action-btn-sm action-btn-danger" style="padding: 6px 14px; border-radius: 99px; cursor:pointer;">🗑️ Delete Article</button>
+      </div>
+    ` : '';
+
     container.innerHTML = `
       <div class="article-header">
         <div class="article-stream">
@@ -225,6 +251,7 @@ async function loadBlogDetails(blogId) {
           <div class="author-info">
             <span class="author-name">@${blog.author_name}</span>
             <span class="article-date">Published ${formattedDate}</span>
+            ${manageControlsHtml}
           </div>
           <div>
             <button id="likeBtn" class="like-button ${isLiked ? 'liked' : ''}">
@@ -267,6 +294,24 @@ async function loadBlogDetails(blogId) {
     const likeBtn = document.getElementById('likeBtn');
     if (likeBtn) {
       likeBtn.addEventListener('click', () => handleLikeToggle(blogId));
+    }
+
+    // Bind delete functionality if user is authorized
+    const deleteBtn = document.getElementById('deleteArticleBtn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to delete this article?')) return;
+        try {
+          await apiRequest(`/api/blogs/${blogId}`, { method: 'DELETE' });
+          showToast('Article deleted successfully.');
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 1200);
+        } catch (err) {
+          console.error('Delete article error:', err);
+          showToast(err.message, 'error');
+        }
+      });
     }
 
     // Load related suggestions

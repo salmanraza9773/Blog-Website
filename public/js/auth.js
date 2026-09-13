@@ -7,6 +7,9 @@ const loginTabBtn = document.getElementById('loginTabBtn');
 const signupTabBtn = document.getElementById('signupTabBtn');
 const loginView = document.getElementById('loginView');
 const signupView = document.getElementById('signupView');
+const forgotView = document.getElementById('forgotView');
+const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+const backToLoginBtn = document.getElementById('backToLoginBtn');
 
 // Switch tabs
 function switchAuthTab(target) {
@@ -15,19 +18,39 @@ function switchAuthTab(target) {
     signupTabBtn.classList.remove('active');
     loginView.classList.add('active');
     signupView.classList.remove('active');
+    if (forgotView) forgotView.classList.remove('active');
     document.title = 'Sign In - KnowledgeShare';
-  } else {
+  } else if (target === 'signup') {
     signupTabBtn.classList.add('active');
     loginTabBtn.classList.remove('active');
     signupView.classList.add('active');
     loginView.classList.remove('active');
+    if (forgotView) forgotView.classList.remove('active');
     document.title = 'Sign Up - KnowledgeShare';
+  } else if (target === 'forgot') {
+    loginTabBtn.classList.remove('active');
+    signupTabBtn.classList.remove('active');
+    loginView.classList.remove('active');
+    signupView.classList.remove('active');
+    if (forgotView) forgotView.classList.add('active');
+    document.title = 'Reset Password - KnowledgeShare';
   }
 }
 
 if (loginTabBtn && signupTabBtn) {
   loginTabBtn.addEventListener('click', () => switchAuthTab('login'));
   signupTabBtn.addEventListener('click', () => switchAuthTab('signup'));
+}
+
+if (forgotPasswordLink) {
+  forgotPasswordLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchAuthTab('forgot');
+  });
+}
+
+if (backToLoginBtn) {
+  backToLoginBtn.addEventListener('click', () => switchAuthTab('login'));
 }
 
 // Handle login submission
@@ -51,14 +74,13 @@ if (loginForm) {
       saveToken(data.token);
       showToast('Welcome back to KnowledgeShare!');
       
-      // Load user theme preference if any
       if (data.user && data.user.preferences && data.user.preferences.theme) {
         localStorage.setItem('theme', data.user.preferences.theme);
       }
 
       setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 1200);
+        window.location.href = data.user && data.user.role === 'admin' ? 'admin.html' : 'index.html';
+      }, 1000);
 
     } catch (err) {
       console.error('Login error:', err);
@@ -100,6 +122,42 @@ if (signupForm) {
       showToast(err.message, 'error');
       btn.disabled = false;
       btn.innerText = 'Create Account';
+    }
+  });
+}
+
+// Handle forgot password submission
+const forgotForm = document.getElementById('forgotForm');
+if (forgotForm) {
+  forgotForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('forgotEmail').value.trim();
+
+    const btn = forgotForm.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerText = 'Generating Link...';
+
+    try {
+      const data = await apiRequest('/api/auth/forgot-password', {
+        method: 'POST',
+        body: { email }
+      });
+
+      showToast('Reset link generated!');
+      
+      if (data.resetLink) {
+        setTimeout(() => {
+          window.location.href = data.resetLink;
+        }, 1500);
+      } else {
+        switchAuthTab('login');
+      }
+
+    } catch (err) {
+      console.error('Forgot password error:', err);
+      showToast(err.message, 'error');
+      btn.disabled = false;
+      btn.innerText = 'Generate Reset Link';
     }
   });
 }

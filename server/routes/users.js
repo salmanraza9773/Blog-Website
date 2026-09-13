@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { getDB } = require('../db');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, authorizeAdmin } = require('../middleware/auth');
 
 // Get user profile dashboard data
 router.get('/profile', authenticateToken, async (req, res) => {
@@ -11,7 +11,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
     
     // Fetch user details
     const user = await db.get(
-      'SELECT id, username, email, preferences_json FROM users WHERE id = ?',
+      'SELECT id, username, email, role, preferences_json FROM users WHERE id = ?',
       [req.user.id]
     );
 
@@ -123,6 +123,52 @@ router.put('/settings', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Update settings error:', err);
     res.status(500).json({ error: 'Server error updating settings' });
+  }
+});
+
+// Admin-only: Get all users
+router.get('/all', authenticateToken, authorizeAdmin, async (req, res) => {
+  try {
+    const db = getDB();
+    const users = await db.all(
+      `SELECT u.id, u.username, u.email, u.role,
+        (SELECT COUNT(*) FROM blogs WHERE author_id = u.id) as blog_count
+       FROM users u
+       ORDER BY u.id ASC`
+    );
+
+    res.json({ users });
+  } catch (err) {
+    console.error('Admin fetch all users error:', err);
+    res.status(500).json({ error: 'Server error fetching user directory' });
+  }
+});
+
+// Admin-only: Delete / Ban user
+router.delete('/:id', authenticateToken, authorizeAdmin, async (req, res) => {
+  const { id } = req.params;
+  const targetId = parseInt(id, 10);
+
+  if (targetId === req.user.id) {
+    return res.status(400).json({ error: 'You cannot delete your own admin account.' });
+  }
+
+  try {
+    const db = getDB();
+    const user = await db.get('SELECT id, role FROM users WHERE id = ?', [targetId]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Delete user and associated content
+    await db.run('DELETE FROM blogs WHERE author_id = ?', [targetId]);
+    await db.run('DELETE FROM likes WHERE user_id = ?', [targetId]);
+    await db.run('DELETE FROM users WHERE id = ?', [targetId]);
+
+    res.json({ message: 'User and associated content deleted successfully.' });
+  } catch (err) {
+    console.error('Admin delete user error:', err);
+    res.status(500).json({ error: 'Server error deleting user' });
   }
 });
 

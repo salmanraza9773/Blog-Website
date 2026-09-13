@@ -222,4 +222,71 @@ router.get('/:id/related', async (req, res) => {
   }
 });
 
+// Update blog (Author or Admin)
+router.put('/:id', authenticateToken, upload.single('cover_image'), async (req, res) => {
+  const { id } = req.params;
+  const { title, content, stream, summary, estimated_read_time, primary_cta_text, primary_cta_url } = req.body;
+
+  try {
+    const db = getDB();
+    const blog = await db.get('SELECT * FROM blogs WHERE id = ?', [id]);
+    if (!blog) {
+      return res.status(404).json({ error: 'Blog not found' });
+    }
+
+    // Check authorization: Must be author OR admin
+    if (req.user.role !== 'admin' && blog.author_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied. You can only edit your own blogs.' });
+    }
+
+    const coverImagePath = req.file ? `/uploads/${req.file.filename}` : blog.cover_image_path;
+    const newTitle = title || blog.title;
+    const newContent = content || blog.content;
+    const newStream = stream || blog.stream;
+    const newSummary = summary !== undefined ? summary : blog.summary;
+    const newReadTime = estimated_read_time !== undefined ? estimated_read_time : blog.estimated_read_time;
+    const newCtaText = primary_cta_text !== undefined ? primary_cta_text : blog.primary_cta_text;
+    const newCtaUrl = primary_cta_url !== undefined ? primary_cta_url : blog.primary_cta_url;
+
+    await db.run(
+      `UPDATE blogs SET 
+        title = ?, content = ?, stream = ?, summary = ?, 
+        estimated_read_time = ?, primary_cta_text = ?, primary_cta_url = ?, cover_image_path = ?
+       WHERE id = ?`,
+      [newTitle, newContent, newStream, newSummary, newReadTime, newCtaText, newCtaUrl, coverImagePath, id]
+    );
+
+    res.json({ message: 'Blog updated successfully' });
+  } catch (err) {
+    console.error('Update blog error:', err);
+    res.status(500).json({ error: 'Server error updating blog' });
+  }
+});
+
+// Delete blog (Author or Admin)
+router.delete('/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = getDB();
+    const blog = await db.get('SELECT author_id FROM blogs WHERE id = ?', [id]);
+    if (!blog) {
+      return res.status(404).json({ error: 'Blog not found' });
+    }
+
+    // Check authorization: Must be author OR admin
+    if (req.user.role !== 'admin' && blog.author_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied. You can only delete your own blogs.' });
+    }
+
+    await db.run('DELETE FROM blogs WHERE id = ?', [id]);
+    await db.run('DELETE FROM likes WHERE blog_id = ?', [id]);
+
+    res.json({ message: 'Blog deleted successfully' });
+  } catch (err) {
+    console.error('Delete blog error:', err);
+    res.status(500).json({ error: 'Server error deleting blog' });
+  }
+});
+
 module.exports = router;

@@ -142,6 +142,9 @@ async function initDB() {
         username TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
+        reset_token TEXT,
+        reset_token_expiry DATETIME,
         preferences_json TEXT DEFAULT '{}'
       );
 
@@ -173,23 +176,36 @@ async function initDB() {
 
     // Perform column migrations for existing databases
     try {
-      const tableInfo = await instance.all("PRAGMA table_info(blogs)");
-      const colNames = tableInfo.map(c => c.name);
+      const blogTableInfo = await instance.all("PRAGMA table_info(blogs)");
+      const blogColNames = blogTableInfo.map(c => c.name);
 
-      if (!colNames.includes('summary')) {
+      if (!blogColNames.includes('summary')) {
         await instance.exec("ALTER TABLE blogs ADD COLUMN summary TEXT;");
       }
-      if (!colNames.includes('estimated_read_time')) {
+      if (!blogColNames.includes('estimated_read_time')) {
         await instance.exec("ALTER TABLE blogs ADD COLUMN estimated_read_time TEXT;");
       }
-      if (!colNames.includes('affiliate_enabled')) {
+      if (!blogColNames.includes('affiliate_enabled')) {
         await instance.exec("ALTER TABLE blogs ADD COLUMN affiliate_enabled INTEGER DEFAULT 1;");
       }
-      if (!colNames.includes('primary_cta_text')) {
+      if (!blogColNames.includes('primary_cta_text')) {
         await instance.exec("ALTER TABLE blogs ADD COLUMN primary_cta_text TEXT DEFAULT 'Check Latest Price';");
       }
-      if (!colNames.includes('primary_cta_url')) {
+      if (!blogColNames.includes('primary_cta_url')) {
         await instance.exec("ALTER TABLE blogs ADD COLUMN primary_cta_url TEXT DEFAULT '#';");
+      }
+
+      const userTableInfo = await instance.all("PRAGMA table_info(users)");
+      const userColNames = userTableInfo.map(c => c.name);
+
+      if (!userColNames.includes('role')) {
+        await instance.exec("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user';");
+      }
+      if (!userColNames.includes('reset_token')) {
+        await instance.exec("ALTER TABLE users ADD COLUMN reset_token TEXT;");
+      }
+      if (!userColNames.includes('reset_token_expiry')) {
+        await instance.exec("ALTER TABLE users ADD COLUMN reset_token_expiry DATETIME;");
       }
     } catch (migErr) {
       console.warn('Column migration check warning:', migErr.message);
@@ -200,10 +216,10 @@ async function initDB() {
     // Auto-seed or re-seed if database is empty or has old articles
     try {
       const blogCount = await instance.get('SELECT COUNT(*) as count FROM blogs');
-      const firstBlog = await instance.get('SELECT title FROM blogs LIMIT 1');
+      const adminUser = await instance.get("SELECT id FROM users WHERE role = 'admin'");
       
-      if (!blogCount || !blogCount.count || blogCount.count === 0 || (firstBlog && firstBlog.title.includes('Designing with Grid'))) {
-        console.log('Populating comprehensive 10-article monetization dataset...');
+      if (!blogCount || !blogCount.count || blogCount.count === 0 || !adminUser) {
+        console.log('Populating comprehensive 10-article monetization dataset & admin account...');
         await autoSeed(instance);
       }
     } catch (err) {
@@ -226,24 +242,28 @@ async function autoSeed(database) {
 
   try {
     const defaultPasswordHash = await bcrypt.hash('test@123', 10);
+    const adminPasswordHash = await bcrypt.hash('AdminPassword2026!', 10);
     
-    // Seed default users
+    // Seed default users including Super Admin
     const users = [
-      { username: 'editor_prime', email: 'editor@knowledgeshare.com' },
-      { username: 'science_scribe', email: 'scribe@knowledgeshare.com' },
-      { username: 'market_analyst', email: 'analyst@knowledgeshare.com' }
+      { username: 'super_admin', email: 'admin@blog.local', passwordHash: adminPasswordHash, role: 'admin' },
+      { username: 'editor_prime', email: 'editor@knowledgeshare.com', passwordHash: defaultPasswordHash, role: 'user' },
+      { username: 'science_scribe', email: 'scribe@knowledgeshare.com', passwordHash: defaultPasswordHash, role: 'user' },
+      { username: 'market_analyst', email: 'analyst@knowledgeshare.com', passwordHash: defaultPasswordHash, role: 'user' }
     ];
 
     const userMap = new Map();
     for (const u of users) {
-      let row = await database.get('SELECT id FROM users WHERE username = ?', [u.username]);
+      let row = await database.get('SELECT id FROM users WHERE username = ? OR email = ?', [u.username, u.email]);
       if (!row) {
         const res = await database.run(
-          'INSERT INTO users (username, email, password_hash, preferences_json) VALUES (?, ?, ?, ?)',
-          [u.username, u.email, defaultPasswordHash, JSON.stringify({ savedStreams: [] })]
+          'INSERT INTO users (username, email, password_hash, role, preferences_json) VALUES (?, ?, ?, ?, ?)',
+          [u.username, u.email, u.passwordHash, u.role, JSON.stringify({ savedStreams: [] })]
         );
         userMap.set(u.username, res.lastID);
       } else {
+        // Update existing user role if needed
+        await database.run('UPDATE users SET role = ? WHERE id = ?', [u.role, row.id]);
         userMap.set(u.username, row.id);
       }
     }

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - KnowledgeShare</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .admin-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-number {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-top: 6px;
+    }
+    .admin-table-container {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 40px;
+      box-shadow: var(--shadow-sm);
+    }
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .admin-table th, .admin-table td {
+      padding: 14px 18px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .admin-table th {
+      background: var(--bg-secondary);
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-primary);
+    }
+    .admin-table tr:last-child td {
+      border-bottom: none;
+    }
+    .action-btn-sm {
+      padding: 5px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+      margin-right: 4px;
+    }
+    .action-btn-danger {
+      background: var(--danger-color);
+      color: #ffffff;
+      border-color: var(--danger-color);
+    }
+    .action-btn-danger:hover {
+      opacity: 0.9;
+    }
+    .role-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .role-badge.admin {
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+    }
+    .role-badge.user {
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+    }
+    .dark-theme .role-badge.admin {
+      background: #1e3a8a;
+      color: #93c5fd;
+      border-color: #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Universal Navigation Bar -->
+  <header>
+    <div class="navbar">
+      <a href="index.html" class="nav-brand">KnowledgeShare</a>
+      
+      <nav class="nav-streams" id="navStreams">
+        <div class="nav-streams-indicator" id="navStreamsIndicator"></div>
+        <a href="index.html" class="stream-tab" data-stream="All">All</a>
+        <a href="index.html?stream=Technology" class="stream-tab" data-stream="Technology">Technology</a>
+        <a href="index.html?stream=Medical" class="stream-tab" data-stream="Medical">Medical</a>
+        <a href="index.html?stream=Science" class="stream-tab" data-stream="Science">Science</a>
+        <a href="index.html?stream=Entertainment" class="stream-tab" data-stream="Entertainment">Entertainment</a>
+        <a href="index.html?stream=Trending" class="stream-tab" data-stream="Trending">Trending</a>
+        <a href="index.html?stream=Business" class="stream-tab" data-stream="Business">Business</a>
+      </nav>
+
+      <div class="nav-links">
+        <a href="create.html" class="nav-link" id="writeLink">Write</a>
+        <div id="authArea"></div>
+      </div>
+    </div>
+  </header>
+
+  <main style="max-width: var(--max-width-layout); margin: 40px auto; padding: 0 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px;">
+      <div>
+        <span class="role-badge admin" style="margin-bottom: 8px;">Super Admin Control Panel</span>
+        <h1 class="serif" style="font-size: 32px;">Platform Management Dashboard</h1>
+      </div>
+      <a href="create.html" class="btn btn-primary">+ Create New Article</a>
+    </div>
+
+    <!-- Platform Stats -->
+    <div class="admin-stats-grid">
+      <div class="stat-card">
+        <div class="text-muted" style="font-size: 13px; font-weight: 600;">Total Published Articles</div>
+        <div class="stat-number" id="statTotalBlogs">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-muted" style="font-size: 13px; font-weight: 600;">Registered User Accounts</div>
+        <div class="stat-number" id="statTotalUsers">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-muted" style="font-size: 13px; font-weight: 600;">System Access Privileges</div>
+        <div class="stat-number" style="font-size: 20px; color: #2563eb;">Full Admin Access</div>
+      </div>
+    </div>
+
+    <!-- All Articles Section -->
+    <section style="margin-bottom: 48px;">
+      <h3 class="serif" style="font-size: 20px; margin-bottom: 16px;">Article Directory & Content Moderation</h3>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Article Title</th>
+              <th>Stream</th>
+              <th>Author</th>
+              <th>Likes</th>
+              <th>Read Time</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="adminBlogsTbody">
+            <tr><td colspan="7" class="text-muted text-center" style="padding: 30px;">Loading articles...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- User Management Section -->
+    <section>
+      <h3 class="serif" style="font-size: 20px; margin-bottom: 16px;">User Account Management</h3>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>User ID</th>
+              <th>Username</th>
+              <th>Email Address</th>
+              <th>Role</th>
+              <th>Articles Authored</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="adminUsersTbody">
+            <tr><td colspan="6" class="text-muted text-center" style="padding: 30px;">Loading user directory...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="toastNotification" class="toast"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

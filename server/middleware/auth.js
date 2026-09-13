@@ -19,7 +19,15 @@ function authenticateToken(req, res, next) {
   });
 }
 
+function authorizeAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Access denied. Administrator rights required.' });
+  }
+  next();
+}
+
 module.exports = {
   authenticateToken,
+  authorizeAdmin,
   JWT_SECRET
 };

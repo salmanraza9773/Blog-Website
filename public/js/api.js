@@ -254,13 +254,15 @@ function initHeader() {
   if (authArea) {
     const user = getUser();
     if (user) {
+      const adminLinkHtml = user.role === 'admin' ? `<a class="dropdown-item" href="admin.html" style="font-weight: 600; color: #2563eb;">Admin Dashboard</a>` : '';
       authArea.innerHTML = `
         <div class="dropdown" id="userProfileDropdown">
           <button class="dropdown-trigger" id="profileDropdownTrigger" style="font-weight: 600; font-family: var(--font-sans);">
-            @${user.username} <span style="font-size: 10px;">▼</span>
+            @${user.username} ${user.role === 'admin' ? '<span style="font-size:10px; background:#2563eb; color:#fff; padding:2px 6px; border-radius:99px; margin-left:4px;">ADMIN</span>' : ''} <span style="font-size: 10px;">▼</span>
           </button>
           <div class="dropdown-menu" id="profileDropdownMenu">
-            <a class="dropdown-item" href="profile.html">Dashboard</a>
+            ${adminLinkHtml}
+            <a class="dropdown-item" href="profile.html">My Dashboard</a>
             <button class="dropdown-item" id="logoutBtn" style="border:none; background:none; text-align:left; width:100%; cursor:pointer;">Sign Out</button>
           </div>
         </div>

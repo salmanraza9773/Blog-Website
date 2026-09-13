@@ -1,12 +1,18 @@
 // Protect page route: redirect if not logged in
 const user = getUser();
 if (!user) {
-  showToast('You must sign in to create a story.', 'error');
+  showToast('You must sign in to create or edit a story.', 'error');
   setTimeout(() => {
     window.location.href = 'auth.html';
   }, 1000);
 }
 
+function getQueryParam(name) {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(name);
+}
+
+const editBlogId = getQueryParam('edit');
 let selectedFile = null;
 
 // Drag and drop setup
@@ -60,7 +66,6 @@ function handleFile(file) {
     coverPreviewImg.style.display = 'block';
     uploadPlaceholder.style.display = 'none';
     
-    // Refresh preview if active
     updateLivePreview();
   };
   reader.readAsDataURL(file);
@@ -79,7 +84,6 @@ function insertMarkdown(before, after = '') {
 
   textarea.value = text.substring(0, start) + replacement + text.substring(end);
   
-  // Set cursor position back
   textarea.focus();
   textarea.selectionStart = start + before.length;
   textarea.selectionEnd = start + before.length + selected.length;
@@ -97,48 +101,51 @@ function insertLinkMD() {
 
 // Markdown Parser Helper
 function parseMarkdown(md) {
+  if (!md) return '';
   let html = md;
   
-  // Escaping raw HTML tags to prevent XSS
+  const htmlTokens = [];
+  const tokenPlaceholder = (idx) => `___HTML_TOKEN_${idx}___`;
+
+  html = html.replace(/<\/?(div|span|h[1-6]|p|ul|ol|li|strong|em|blockquote|table|thead|tbody|tr|th|td|a|svg|path|code|pre|img|br|hr)[^>]*>/gi, (match) => {
+    const idx = htmlTokens.length;
+    htmlTokens.push(match);
+    return tokenPlaceholder(idx);
+  });
+
   html = html
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
-  // Code blocks (```code```)
+  htmlTokens.forEach((token, idx) => {
+    html = html.replace(tokenPlaceholder(idx), token);
+  });
+
   html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-  
-  // Inline code (`code`)
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
 
-  // Headings (## Heading, # Heading)
   html = html.replace(/^\s*## (.*?)$/gm, '<h2>$1</h2>');
   html = html.replace(/^\s*# (.*?)$/gm, '<h1>$1</h1>');
   html = html.replace(/^\s*### (.*?)$/gm, '<h3>$1</h3>');
 
-  // Blockquotes (> text)
   html = html.replace(/^\s*&gt; (.*?)$/gm, '<blockquote>$1</blockquote>');
 
-  // Bold (**text** or __text__)
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
 
-  // Italics (*text* or _text_)
   html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
   html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
 
-  // Links ([label](url))
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="text-decoration:underline;">$1</a>');
 
-  // Unordered Lists (* item)
   html = html.replace(/^\s*[\-\*] (.*?)$/gm, '<li>$1</li>');
 
-  // Paragraph splits
   const blocks = html.split(/\n\n+/);
   html = blocks.map(block => {
     block = block.trim();
     if (!block) return '';
-    if (block.startsWith('<h') || block.startsWith('<pre') || block.startsWith('<block') || block.startsWith('<ul') || block.startsWith('<li')) {
+    if (block.startsWith('<h') || block.startsWith('<pre') || block.startsWith('<block') || block.startsWith('<ul') || block.startsWith('<li') || block.startsWith('<table') || block.startsWith('<div')) {
       return block;
     }
     return `<p>${block.replace(/\n/g, '<br>')}</p>`;
@@ -160,6 +167,9 @@ function updateLivePreview() {
   if (selectedFile) {
     previewCover.src = coverPreviewImg.src;
     previewCover.style.display = 'block';
+  } else if (coverPreviewImg.src && coverPreviewImg.style.display !== 'none') {
+    previewCover.src = coverPreviewImg.src;
+    previewCover.style.display = 'block';
   } else {
     previewCover.style.display = 'none';
   }
@@ -178,7 +188,6 @@ const editorPane = document.getElementById('editorPane');
 const previewPane = document.getElementById('previewPane');
 
 function selectTab(mode) {
-  // Remove active state
   [editTabBtn, splitTabBtn, previewTabBtn].forEach(btn => btn.classList.remove('active'));
 
   if (mode === 'edit') {
@@ -218,7 +227,35 @@ if (editorTitle && editorContent && streamSelect) {
   streamSelect.addEventListener('change', updateLivePreview);
 }
 
-// Submit publish request
+// Load existing blog for editing if edit parameter exists
+async function loadEditBlog() {
+  if (!editBlogId) return;
+
+  const publishBtn = document.getElementById('publishBtn');
+  if (publishBtn) publishBtn.innerText = 'Update Story';
+
+  try {
+    const data = await apiRequest(`/api/blogs/${editBlogId}`);
+    const blog = data.blog;
+
+    document.getElementById('editorTitle').value = blog.title;
+    document.getElementById('editorContent').value = blog.content;
+    document.getElementById('streamSelect').value = blog.stream;
+
+    if (blog.cover_image_path) {
+      coverPreviewImg.src = blog.cover_image_path;
+      coverPreviewImg.style.display = 'block';
+      uploadPlaceholder.style.display = 'none';
+    }
+
+    updateLivePreview();
+  } catch (err) {
+    console.error('Error loading blog for editing:', err);
+    showToast('Failed to load article for editing.', 'error');
+  }
+}
+
+// Submit publish or update request
 const publishBtn = document.getElementById('publishBtn');
 if (publishBtn) {
   publishBtn.addEventListener('click', async () => {
@@ -237,7 +274,7 @@ if (publishBtn) {
     }
 
     publishBtn.disabled = true;
-    publishBtn.innerText = 'Publishing...';
+    publishBtn.innerText = editBlogId ? 'Updating...' : 'Publishing...';
 
     try {
       const formData = new FormData();
@@ -248,21 +285,31 @@ if (publishBtn) {
         formData.append('cover_image', selectedFile);
       }
 
-      const data = await apiRequest('/api/blogs', {
-        method: 'POST',
+      const endpoint = editBlogId ? `/api/blogs/${editBlogId}` : '/api/blogs';
+      const method = editBlogId ? 'PUT' : 'POST';
+
+      const data = await apiRequest(endpoint, {
+        method,
         body: formData
       });
 
-      showToast('Story published successfully!');
+      showToast(editBlogId ? 'Story updated successfully!' : 'Story published successfully!');
+      const targetId = editBlogId || data.blogId;
       setTimeout(() => {
-        window.location.href = `blog.html?id=${data.blogId}`;
-      }, 1500);
+        window.location.href = `blog.html?id=${targetId}`;
+      }, 1200);
 
     } catch (err) {
-      console.error('Publish error:', err);
+      console.error('Submit error:', err);
       showToast(err.message, 'error');
       publishBtn.disabled = false;
-      publishBtn.innerText = 'Publish';
+      publishBtn.innerText = editBlogId ? 'Update Story' : 'Publish';
     }
   });
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (editBlogId) {
+    loadEditBlog();
+  }
+});
