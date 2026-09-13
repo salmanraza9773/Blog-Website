@@ -148,9 +148,14 @@ async function initDB() {
       CREATE TABLE IF NOT EXISTS blogs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
+        summary TEXT,
+        estimated_read_time TEXT,
         content TEXT NOT NULL,
         cover_image_path TEXT,
         stream TEXT NOT NULL,
+        affiliate_enabled INTEGER DEFAULT 1,
+        primary_cta_text TEXT DEFAULT 'Check Latest Price',
+        primary_cta_url TEXT DEFAULT '#',
         author_id INTEGER NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE
@@ -166,13 +171,39 @@ async function initDB() {
       );
     `);
 
+    // Perform column migrations for existing databases
+    try {
+      const tableInfo = await instance.all("PRAGMA table_info(blogs)");
+      const colNames = tableInfo.map(c => c.name);
+
+      if (!colNames.includes('summary')) {
+        await instance.exec("ALTER TABLE blogs ADD COLUMN summary TEXT;");
+      }
+      if (!colNames.includes('estimated_read_time')) {
+        await instance.exec("ALTER TABLE blogs ADD COLUMN estimated_read_time TEXT;");
+      }
+      if (!colNames.includes('affiliate_enabled')) {
+        await instance.exec("ALTER TABLE blogs ADD COLUMN affiliate_enabled INTEGER DEFAULT 1;");
+      }
+      if (!colNames.includes('primary_cta_text')) {
+        await instance.exec("ALTER TABLE blogs ADD COLUMN primary_cta_text TEXT DEFAULT 'Check Latest Price';");
+      }
+      if (!colNames.includes('primary_cta_url')) {
+        await instance.exec("ALTER TABLE blogs ADD COLUMN primary_cta_url TEXT DEFAULT '#';");
+      }
+    } catch (migErr) {
+      console.warn('Column migration check warning:', migErr.message);
+    }
+
     console.log('WebAssembly SQLite database initialized successfully.');
 
-    // Auto-seed if database is empty
+    // Auto-seed or re-seed if database is empty or has old articles
     try {
       const blogCount = await instance.get('SELECT COUNT(*) as count FROM blogs');
-      if (!blogCount || !blogCount.count || blogCount.count === 0) {
-        console.log('Database is empty. Populating default seed data...');
+      const firstBlog = await instance.get('SELECT title FROM blogs LIMIT 1');
+      
+      if (!blogCount || !blogCount.count || blogCount.count === 0 || (firstBlog && firstBlog.title.includes('Designing with Grid'))) {
+        console.log('Populating comprehensive 10-article monetization dataset...');
         await autoSeed(instance);
       }
     } catch (err) {
@@ -191,6 +222,8 @@ async function initDB() {
 
 async function autoSeed(database) {
   const bcrypt = require('bcryptjs');
+  const articlesData = require('./articles_data');
+
   try {
     const defaultPasswordHash = await bcrypt.hash('test@123', 10);
     
@@ -217,47 +250,31 @@ async function autoSeed(database) {
 
     const defaultAuthorId = userMap.get('editor_prime') || 1;
 
-    // Seed default articles
-    const defaultArticles = [
-      {
-        title: 'The Era of Native Multimodal AI: Architecting Systems with Reasoning at Scale',
-        stream: 'Technology',
-        cover_image_path: 'https://images.unsplash.com/photo-1677442136019-21780efad99a?q=80&w=600&auto=format&fit=crop',
-        content: `> "The transition from text-only reasoning to native multimodal systems represents the most significant architectural paradigm shift in artificial intelligence since the transformer itself."\n\n## Architecting Reasoning at Scale\n\nIn 2026, enterprise deployment of artificial intelligence has moved past simple chatbot interfaces into autonomous cognitive architectures. Native multimodal models—which process video, audio, code, and sensory data streams concurrently without separate transcription pipelines—are now operating at scale. These systems are defined by their ability to perform deep multi-step reasoning before generating outputs, representing a shift from raw statistical generation to systematic logical inference.`
-      },
-      {
-        title: 'Quantum Error Correction: The Enterprise Shift Toward Post-Quantum Cryptography Standards',
-        stream: 'Technology',
-        cover_image_path: 'https://images.unsplash.com/photo-1661956602116-aa6865609028?q=80&w=600&auto=format&fit=crop',
-        content: `> "Quantum computer development has reached a critical velocity. As labs build fault-tolerant qubits, the mathematical assumptions backing global finance must adapt today."\n\n## The Cryptographic Countdown\n\nFor years, quantum computing existed primarily in academic labs. However, recent breakthroughs in Quantum Error Correction (QEC) have dramatically reduced the physical-to-logical qubit ratio required to execute complex operations.`
-      },
-      {
-        title: 'Breakthroughs in CRISPR-Cas13 Target Selection for Respiratory RNA Viruses',
-        stream: 'Medical',
-        cover_image_path: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?q=80&w=600&auto=format&fit=crop',
-        content: `> "Targeting messenger RNA directly allows precision intervention without permanent genomic alteration."\n\n## Direct RNA Cleavage Systems\n\nUnlike traditional Cas9 variants that target double-stranded DNA, Cas13 nucleases operate exclusively on single-stranded RNA substrates. Recent clinical trials demonstrate non-invasive delivery mechanisms targeting pulmonary epithelium.`
-      },
-      {
-        title: 'James Webb Space Telescope Uncovers Primordial Black Holes at Cosmic Dawn',
-        stream: 'Science',
-        cover_image_path: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=600&auto=format&fit=crop',
-        content: `> "Observations from redshift z > 10 reveal supermassive objects far earlier than standard cosmological accretion models predicted."\n\n## Challenging Stellar Evolution Timelines\n\nHigh-resolution infrared spectra captured by the James Webb Space Telescope have revealed fully formed supermassive black holes within 400 million years of the Big Bang.`
-      },
-      {
-        title: 'Global Supply Chain Re-Shoring: How Robotics and AI Reshape Manufacturing Economics',
-        stream: 'Business',
-        cover_image_path: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=600&auto=format&fit=crop',
-        content: `> "Automated fabrication nodes are neutralizing legacy labor arbitrage advantages across global manufacturing hubs."\n\n## The Reshoring Revolution\n\nMultinational enterprises are increasingly shifting production closer to domestic consumer markets.`
-      }
-    ];
+    // Clear existing old articles to ensure high-retention 10-article dataset is active
+    await database.exec('DELETE FROM blogs');
+    await database.exec('DELETE FROM likes');
 
-    for (const art of defaultArticles) {
+    for (const art of articlesData) {
       await database.run(
-        'INSERT INTO blogs (title, content, cover_image_path, stream, author_id) VALUES (?, ?, ?, ?, ?)',
-        [art.title, art.content, art.cover_image_path, art.stream, defaultAuthorId]
+        `INSERT INTO blogs (
+          title, summary, estimated_read_time, content, cover_image_path, 
+          stream, affiliate_enabled, primary_cta_text, primary_cta_url, author_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          art.title,
+          art.summary,
+          art.estimated_read_time,
+          art.content,
+          art.cover_image_path,
+          art.stream,
+          art.affiliate_enabled !== undefined ? art.affiliate_enabled : 1,
+          art.primary_cta_text || 'Check Latest Price',
+          art.primary_cta_url || '#',
+          defaultAuthorId
+        ]
       );
     }
-    console.log('✓ Auto-seeded initial default articles successfully.');
+    console.log('✓ Successfully ingested 10 high-retention monetization articles into SQLite database.');
   } catch (err) {
     console.error('Auto-seed error:', err.message);
   }

@@ -10,11 +10,12 @@ function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString(undefined, options);
 }
 
-// Markdown Parser Helper
+// Markdown Parser Helper with Tables, CTA Boxes, and Pros/Cons support
 function parseMarkdown(md) {
+  if (!md) return '';
   let html = md;
   
-  // Escaping raw HTML tags to prevent XSS
+  // Escaping raw HTML tags to prevent XSS (except allowed tags)
   html = html
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -25,6 +26,38 @@ function parseMarkdown(md) {
   
   // Inline code (`code`)
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // CTA Box shortcode: [CTA_BOX title="..." price="..." specs="..." link="..." button="..."]
+  html = html.replace(/\[CTA_BOX title="([^"]+)" price="([^"]+)" specs="([^"]+)" link="([^"]+)" button="([^"]+)"\]/g, (match, title, price, specs, link, button) => {
+    const specPills = specs.split(',').map(s => `<span class="cta-spec-pill">${s.trim()}</span>`).join('');
+    return `
+      <div class="affiliate-cta-box">
+        <div class="cta-header">
+          <div class="cta-title">${title}</div>
+          <span class="cta-price-tag">${price}</span>
+        </div>
+        <div class="cta-specs">${specPills}</div>
+        <a href="${link}" target="_blank" rel="nofollow sponsored" class="cta-button">
+          <span>${button}</span>
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        </a>
+      </div>
+    `;
+  });
+
+  // Markdown Tables (| Header | Header |\n| --- | --- |\n| Cell | Cell |)
+  html = html.replace(/^\|(.+)\|\r?\n\|( *[-:]+[-| :]*)\|\r?\n((?:\|.+\|\r?\n?)*)/gm, (match, headerRow, separatorRow, bodyRows) => {
+    const headers = headerRow.split('|').map(h => h.trim()).filter(h => h.length > 0);
+    const ths = headers.map(h => `<th>${h}</th>`).join('');
+
+    const rows = bodyRows.trim().split('\n').map(row => {
+      const cells = row.split('|').map(c => c.trim()).filter(c => c.length > 0);
+      const tds = cells.map(c => `<td>${c}</td>`).join('');
+      return `<tr>${tds}</tr>`;
+    }).join('\n');
+
+    return `<table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>`;
+  });
 
   // Headings (## Heading, # Heading)
   html = html.replace(/^\s*## (.*?)$/gm, '<h2>$1</h2>');
@@ -43,7 +76,7 @@ function parseMarkdown(md) {
   html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
 
   // Links ([label](url))
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="text-decoration:underline;">$1</a>');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="nofollow sponsored" style="text-decoration:underline;">$1</a>');
 
   // Unordered Lists (* item)
   html = html.replace(/^\s*[\-\*] (.*?)$/gm, '<li>$1</li>');
@@ -53,13 +86,55 @@ function parseMarkdown(md) {
   html = blocks.map(block => {
     block = block.trim();
     if (!block) return '';
-    if (block.startsWith('<h') || block.startsWith('<pre') || block.startsWith('<block') || block.startsWith('<ul') || block.startsWith('<li')) {
+    if (block.startsWith('<h') || block.startsWith('<pre') || block.startsWith('<block') || block.startsWith('<ul') || block.startsWith('<li') || block.startsWith('<table') || block.startsWith('<div')) {
       return block;
     }
     return `<p>${block.replace(/\n/g, '<br>')}</p>`;
   }).join('\n');
 
   return html;
+}
+
+// Helper to inject Display Ad Placeholders
+function injectAdSlots(htmlContent) {
+  let paragraphs = htmlContent.split('</p>');
+  let resultHtml = '';
+
+  const adSlot1 = `
+    <div class="ad-slot-in-article">
+      <div class="ad-label">Sponsored / Advertisement</div>
+      <div class="ad-content-placeholder">
+        [AdSense Display Unit - Responsive In-Article Banner (Slot 1)]
+      </div>
+    </div>
+  `;
+
+  const adSlot2 = `
+    <div class="ad-slot-in-article">
+      <div class="ad-label">Sponsored / Advertisement</div>
+      <div class="ad-content-placeholder">
+        [AdSense Display Unit - High-Impact Verdict Banner (Slot 2)]
+      </div>
+    </div>
+  `;
+
+  for (let i = 0; i < paragraphs.length; i++) {
+    if (paragraphs[i].trim().length > 0) {
+      resultHtml += paragraphs[i] + '</p>';
+    }
+
+    // Insert Slot 1 after 2nd paragraph
+    if (i === 1) {
+      resultHtml += adSlot1;
+    }
+
+    // Insert Slot 2 before Conclusion/Verdict or mid-way
+    if (i === Math.floor(paragraphs.length * 0.75) && paragraphs.length > 4) {
+      resultHtml += adSlot2;
+    }
+  }
+
+  return resultHtml;
 }
 
 // Render shimmer loading for article
@@ -93,14 +168,13 @@ async function loadBlogDetails(blogId) {
   renderArticleShimmer();
   
   try {
-    // Add artificial delay to appreciate shimmer effect (e.g. 600ms)
-    await new Promise(resolve => setTimeout(resolve, 600));
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     const data = await apiRequest(`/api/blogs/${blogId}`);
     const blog = data.blog;
     const isLiked = data.isLiked;
     
-    // Highlight the active stream category in the global header
+    // Highlight active stream category
     window.currentBlogStream = blog.stream;
     if (typeof initNavbarStreams === 'function') {
       initNavbarStreams();
@@ -112,23 +186,47 @@ async function loadBlogDetails(blogId) {
       `<img class="article-cover" src="${blog.cover_image_path}" alt="${blog.title}" onerror="handleImageError(this, '${blog.stream}')">` : '';
       
     const formattedDate = formatDate(blog.created_at);
+    const readTimeHtml = blog.estimated_read_time ? `<span style="margin-left: 12px; color: var(--text-secondary);">• ${blog.estimated_read_time}</span>` : '';
+    const summaryHtml = blog.summary ? `<p class="article-summary" style="font-size: 18px; color: var(--text-secondary); line-height: 1.6; margin: 16px 0 24px 0; font-style: italic;">${blog.summary}</p>` : '';
 
-    // Run the Markdown parser
-    const bodyContentHtml = parseMarkdown(blog.content);
+    // Run Markdown parser and inject ad slots
+    const parsedHtml = parseMarkdown(blog.content);
+    const bodyContentHtml = injectAdSlots(parsedHtml);
+
+    // Primary CTA Box if affiliate is enabled
+    let primaryCtaHtml = '';
+    if (blog.affiliate_enabled && blog.primary_cta_text && blog.primary_cta_url !== '#') {
+      primaryCtaHtml = `
+        <div class="affiliate-cta-box" style="margin-top: 40px;">
+          <div class="cta-header">
+            <div>
+              <div class="cta-title">Featured Partner Deal: ${blog.title}</div>
+              <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Verified Stock & Best Price Guarantee</p>
+            </div>
+            <span class="cta-price-tag">Top Value</span>
+          </div>
+          <a href="${blog.primary_cta_url}" target="_blank" rel="nofollow sponsored" class="cta-button">
+            <span>${blog.primary_cta_text}</span>
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+          </a>
+        </div>
+      `;
+    }
 
     container.innerHTML = `
       <div class="article-header">
         <div class="article-stream">
           <span class="badge">${blog.stream}</span>
+          ${readTimeHtml}
         </div>
         <h1 class="article-title serif">${blog.title}</h1>
+        ${summaryHtml}
         <div class="article-author-card">
           <div class="author-info">
             <span class="author-name">@${blog.author_name}</span>
             <span class="article-date">Published ${formattedDate}</span>
           </div>
           <div>
-            <!-- Like button -->
             <button id="likeBtn" class="like-button ${isLiked ? 'liked' : ''}">
               <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="display:inline-block; vertical-align:middle;">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
@@ -137,12 +235,27 @@ async function loadBlogDetails(blogId) {
             </button>
           </div>
         </div>
+
+        <!-- Sticky FTC Affiliate Disclosure Banner -->
+        <div class="ftc-disclosure-banner">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span><strong>Editorial Disclosure:</strong> When you buy through links on our site, we may earn an affiliate commission at no extra cost to you. <a href="disclosure.html" target="_blank">Read our full policy</a>.</span>
+        </div>
       </div>
       
       ${coverHtml}
       
       <div class="article-content serif">
         ${bodyContentHtml}
+        ${primaryCtaHtml}
+      </div>
+
+      <!-- Persistent Footer Ad Slot (Slot 3) -->
+      <div class="ad-slot-footer">
+        <div class="ad-label">Sponsored / Advertisement</div>
+        <div class="ad-content-placeholder">
+          [AdSense Persistent Banner - Footer Display Unit (Slot 3)]
+        </div>
       </div>
 
       <div class="article-footer">

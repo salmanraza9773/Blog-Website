@@ -311,6 +311,60 @@ function handleImageError(imgElement, streamName) {
   imgElement.replaceWith(placeholder);
 }
 
+// Render Universal Footer across all pages
+function renderUniversalFooter() {
+  if (document.querySelector('footer.site-footer')) return;
+
+  const footer = document.createElement('footer');
+  footer.className = 'site-footer';
+  footer.innerHTML = `
+    <div class="footer-container">
+      <div>
+        <div class="footer-brand">KnowledgeShare</div>
+        <p class="footer-description">
+          An enterprise-grade publishing platform delivering in-depth technical breakdowns, high-ticket hardware reviews, medical breakthroughs, and autonomous commercial intelligence.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h5>Explore Streams</h5>
+        <ul class="footer-links">
+          <li><a href="index.html?stream=Technology">Technology</a></li>
+          <li><a href="index.html?stream=Medical">Medical</a></li>
+          <li><a href="index.html?stream=Science">Science</a></li>
+          <li><a href="index.html?stream=Trending">Trending Topics</a></li>
+          <li><a href="index.html?stream=Business">Business & AI</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Monetization & Ads</h5>
+        <ul class="footer-links">
+          <li><a href="disclosure.html">FTC Affiliate Policy</a></li>
+          <li><a href="disclosure.html#ad-policy">AdSense Standards</a></li>
+          <li><a href="privacy.html#cookies">Cookie & Tracking Policy</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Legal & Trust</h5>
+        <ul class="footer-links">
+          <li><a href="privacy.html">Privacy Policy</a></li>
+          <li><a href="terms.html">Terms of Service</a></li>
+          <li><a href="disclosure.html">Affiliate Disclosure</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div>© 2026 KnowledgeShare Media Inc. All rights reserved.</div>
+      <div>Editorial Integrity & Commercial Transparency Standards Verified.</div>
+    </div>
+  `;
+
+  document.body.appendChild(footer);
+}
+
 // DOM Setup
 window.addEventListener('DOMContentLoaded', () => {
   initTheme();
@@ -318,4 +372,5 @@ window.addEventListener('DOMContentLoaded', () => {
   initActiveNavLink();
   initHeader();
   initNavbarStreams();
+  renderUniversalFooter();
 });

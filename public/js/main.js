@@ -72,8 +72,9 @@ async function loadBlogs(stream) {
     blogList.innerHTML = '';
     data.blogs.forEach(blog => {
       const coverImg = blog.cover_image_path || 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?q=80&w=300&auto=format&fit=crop';
-      const snippet = getSnippet(blog.content);
+      const snippet = blog.summary || getSnippet(blog.content);
       const formattedDate = formatDate(blog.created_at);
+      const readTimeText = blog.estimated_read_time ? ` · ${blog.estimated_read_time}` : '';
       
       const card = document.createElement('div');
       card.className = 'blog-card';
@@ -83,7 +84,7 @@ async function loadBlogs(stream) {
             <div class="blog-card-meta">
               <span class="blog-card-author">@${blog.author_name}</span>
               <span>·</span>
-              <span>${formattedDate}</span>
+              <span>${formattedDate}${readTimeText}</span>
             </div>
             <h2 class="blog-card-title serif">${blog.title}</h2>
             <p class="blog-card-snippet serif">${snippet}</p>
