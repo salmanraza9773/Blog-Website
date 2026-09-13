@@ -4,82 +4,102 @@ const path = require('path');
 const fs = require('fs');
 
 let db = null;
+let dbInitPromise = null;
 
 async function initDB() {
   if (db) return db;
-  
-  let dbPath = path.join(__dirname, 'blog.db');
-  
-  if (process.env.VERCEL) {
-    const tempDbPath = path.join('/tmp', 'blog.db');
-    if (!fs.existsSync(tempDbPath)) {
-      try {
-        if (fs.existsSync(dbPath)) {
-          fs.copyFileSync(dbPath, tempDbPath);
-          console.log('Database successfully copied to writable /tmp/blog.db');
-        } else {
-          console.log('No seed database found at source; creating clean database in /tmp/blog.db');
+  if (dbInitPromise) return dbInitPromise;
+
+  dbInitPromise = (async () => {
+    let dbPath = path.join(__dirname, 'blog.db');
+    
+    if (process.env.VERCEL) {
+      // Search for blog.db in probable Vercel output paths
+      const possibleSourcePaths = [
+        path.join(__dirname, 'blog.db'),
+        path.join(__dirname, '../server/blog.db'),
+        path.join(process.cwd(), 'server', 'blog.db'),
+        path.join(process.cwd(), 'blog.db')
+      ];
+
+      let sourceDbPath = possibleSourcePaths.find(p => fs.existsSync(p));
+
+      const tempDbPath = path.join('/tmp', 'blog.db');
+      if (!fs.existsSync(tempDbPath)) {
+        try {
+          if (sourceDbPath) {
+            fs.copyFileSync(sourceDbPath, tempDbPath);
+            console.log(`Database successfully copied from ${sourceDbPath} to writable /tmp/blog.db`);
+          } else {
+            console.log('No seed database found at source; creating clean database in /tmp/blog.db');
+          }
+        } catch (err) {
+          console.warn('Warning: Failed to copy database to /tmp:', err);
         }
-      } catch (err) {
-        console.warn('Warning: Failed to copy database to /tmp:', err);
       }
+      dbPath = tempDbPath;
     }
-    dbPath = tempDbPath;
-  }
-  
-  db = await open({
-    filename: dbPath,
-    driver: sqlite3.Database
+    
+    const instance = await open({
+      filename: dbPath,
+      driver: sqlite3.Database
+    });
+
+    // Enable foreign keys
+    await instance.get('PRAGMA foreign_keys = ON');
+
+    // Create tables
+    await instance.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        preferences_json TEXT DEFAULT '{}'
+      );
+
+      CREATE TABLE IF NOT EXISTS blogs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        cover_image_path TEXT,
+        stream TEXT NOT NULL,
+        author_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS likes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        blog_id INTEGER NOT NULL,
+        UNIQUE(user_id, blog_id),
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(blog_id) REFERENCES blogs(id) ON DELETE CASCADE
+      );
+    `);
+
+    console.log('Database connection opened and schema validated.');
+
+    // Auto-seed if database is brand new / empty
+    try {
+      const blogCount = await instance.get('SELECT COUNT(*) as count FROM blogs');
+      if (!blogCount || blogCount.count === 0) {
+        console.log('Database is empty. Populating default seed data...');
+        await autoSeed(instance);
+      }
+    } catch (err) {
+      console.warn('Auto-seeding check failed:', err.message);
+    }
+
+    db = instance;
+    return db;
+  })().catch(err => {
+    dbInitPromise = null;
+    throw err;
   });
 
-  // Enable foreign keys
-  await db.get('PRAGMA foreign_keys = ON');
-
-  // Create tables
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      preferences_json TEXT DEFAULT '{}'
-    );
-
-    CREATE TABLE IF NOT EXISTS blogs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      content TEXT NOT NULL,
-      cover_image_path TEXT,
-      stream TEXT NOT NULL,
-      author_id INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS likes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      blog_id INTEGER NOT NULL,
-      UNIQUE(user_id, blog_id),
-      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY(blog_id) REFERENCES blogs(id) ON DELETE CASCADE
-    );
-  `);
-
-  console.log('Database connection opened and schema validated.');
-
-  // Auto-seed if database is brand new / empty
-  try {
-    const blogCount = await db.get('SELECT COUNT(*) as count FROM blogs');
-    if (!blogCount || blogCount.count === 0) {
-      console.log('Database is empty. Populating default seed data...');
-      await autoSeed(db);
-    }
-  } catch (err) {
-    console.warn('Auto-seeding check failed:', err.message);
-  }
-
-  return db;
+  return dbInitPromise;
 }
 
 async function autoSeed(database) {
