@@ -48,11 +48,11 @@
           <input type="email" id="loginEmail" class="form-input" required placeholder="name@example.com">
         </div>
         <div class="form-group">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label for="loginPassword" class="form-label" style="margin-bottom: 0;">Password</label>
+          <label for="loginPassword" class="form-label">Password</label>
+          <input type="password" id="loginPassword" class="form-input" required placeholder="••••••••">
+          <div style="text-align: right; margin-top: 6px;">
             <a href="#" id="forgotPasswordLink" style="font-size: 12px; color: var(--text-secondary); text-decoration: underline;">Forgot Password?</a>
           </div>
-          <input type="password" id="loginPassword" class="form-input" required placeholder="••••••••">
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px; border-radius: 8px;">Sign In</button>
       </form>
@@ -81,7 +81,7 @@
     <!-- Forgot Password Panel -->
     <div class="auth-form-panel" id="forgotView">
       <h2 class="auth-title serif" style="font-size: 22px; text-align: left; margin-bottom: 12px;">Reset Your Password</h2>
-      <p class="text-muted" style="font-size: 13px; margin-bottom: 20px;">Enter your registered account email address. We will generate a secure 1-hour reset link.</p>
+      <p class="text-muted" style="font-size: 13px; margin-bottom: 20px;">Enter your registered account email address. A secure 1-hour reset link will be sent.</p>
       <form id="forgotForm">
         <div class="form-group">
           <label for="forgotEmail" class="form-label">Account Email Address</label>
@@ -90,6 +90,7 @@
         <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px; border-radius: 8px;">Generate Reset Link</button>
         <button type="button" id="backToLoginBtn" class="btn btn-secondary" style="width: 100%; margin-top: 10px; border-radius: 8px;">← Back to Sign In</button>
       </form>
+      <div id="forgotResultArea" style="display: none; margin-top: 20px; padding: 16px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color);"></div>
     </div>
   </main>
 

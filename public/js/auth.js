@@ -128,6 +128,8 @@ if (signupForm) {
 
 // Handle forgot password submission
 const forgotForm = document.getElementById('forgotForm');
+const forgotResultArea = document.getElementById('forgotResultArea');
+
 if (forgotForm) {
   forgotForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -135,7 +137,12 @@ if (forgotForm) {
 
     const btn = forgotForm.querySelector('button[type="submit"]');
     btn.disabled = true;
-    btn.innerText = 'Generating Link...';
+    btn.innerText = 'Sending Request...';
+
+    if (forgotResultArea) {
+      forgotResultArea.style.display = 'none';
+      forgotResultArea.innerHTML = '';
+    }
 
     try {
       const data = await apiRequest('/api/auth/forgot-password', {
@@ -143,14 +150,26 @@ if (forgotForm) {
         body: { email }
       });
 
-      showToast('Reset link generated!');
+      showToast('Password reset link generated!');
+      btn.disabled = false;
+      btn.innerText = 'Generate Reset Link';
       
-      if (data.resetLink) {
-        setTimeout(() => {
-          window.location.href = data.resetLink;
-        }, 1500);
-      } else {
-        switchAuthTab('login');
+      if (forgotResultArea) {
+        forgotResultArea.style.display = 'block';
+        forgotResultArea.innerHTML = `
+          <div style="font-size: 14px; font-weight: 600; color: var(--success-color); margin-bottom: 8px;">
+            ✓ Reset link dispatched to ${email}
+          </div>
+          <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
+            A secure 1-hour password reset token has been issued. In a production environment, this link is delivered directly to your email inbox.
+          </p>
+          ${data.resetLink ? `
+            <div style="background: var(--card-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 12px; margin-bottom: 12px; word-break: break-all;">
+              <strong>Reset Link:</strong> <a href="${data.resetLink}" style="color: #2563eb; text-decoration: underline;">${window.location.origin}${data.resetLink}</a>
+            </div>
+            <a href="${data.resetLink}" class="btn btn-primary" style="width: 100%; text-align: center; font-size: 13px; border-radius: 6px;">Open Password Reset Page →</a>
+          ` : ''}
+        `;
       }
 
     } catch (err) {
