@@ -69,10 +69,25 @@ async function apiRequest(endpoint, options = {}) {
     headers,
   });
 
-  const data = await res.json();
+  const contentType = res.headers.get('content-type') || '';
+  let data;
+
+  if (contentType.includes('application/json')) {
+    data = await res.json();
+  } else {
+    const text = await res.text();
+    if (!res.ok) {
+      throw new Error(`Server Error (${res.status}): ${text.substring(0, 100)}`);
+    }
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Unexpected server response format (${res.status}): ${text.substring(0, 100)}`);
+    }
+  }
 
   if (!res.ok) {
-    throw new Error(data.error || 'Something went wrong');
+    throw new Error(data.error || `Server Error (${res.status})`);
   }
 
   return data;
