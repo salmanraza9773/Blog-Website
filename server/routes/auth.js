@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { getDB } = require('../db');
 const { JWT_SECRET, authenticateToken } = require('../middleware/auth');
+const { sendPasswordResetEmail } = require('../utils/email');
 
 // Register
 router.post('/register', async (req, res) => {
@@ -153,13 +154,16 @@ router.post('/forgot-password', async (req, res) => {
       [token, expiryISO, user.id]
     );
 
-    const resetLink = `/reset-password.html?token=${token}`;
-    console.log(`🔑 PASSWORD RESET LINK for ${user.email}: ${resetLink}`);
+    const host = req.get('host');
+    const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+    const resetUrl = `${baseUrl}/reset-password.html?token=${token}`;
+
+    console.log(`🔑 PASSWORD RESET LINK for ${user.email}: ${resetUrl}`);
+    await sendPasswordResetEmail(user.email, resetUrl);
 
     res.json({
-      message: 'Password reset link generated successfully.',
-      resetLink,
-      token
+      message: 'If an account exists with that email address, a password reset link has been sent.'
     });
   } catch (err) {
     console.error('Forgot password error:', err);

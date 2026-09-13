@@ -150,25 +150,19 @@ if (forgotForm) {
         body: { email }
       });
 
-      showToast('Password reset link generated!');
+      showToast('Password reset link sent!');
       btn.disabled = false;
       btn.innerText = 'Generate Reset Link';
       
       if (forgotResultArea) {
         forgotResultArea.style.display = 'block';
         forgotResultArea.innerHTML = `
-          <div style="font-size: 14px; font-weight: 600; color: var(--success-color); margin-bottom: 8px;">
-            ✓ Reset link dispatched to ${email}
+          <div style="font-size: 14px; font-weight: 600; color: var(--success-color); margin-bottom: 6px;">
+            ✓ Reset link dispatched to email
           </div>
-          <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">
-            A secure 1-hour password reset token has been issued. In a production environment, this link is delivered directly to your email inbox.
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 0;">
+            If an account is associated with <strong>${email}</strong>, an email containing your password reset link has been sent. Please check your email inbox and spam folder.
           </p>
-          ${data.resetLink ? `
-            <div style="background: var(--card-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 12px; margin-bottom: 12px; word-break: break-all;">
-              <strong>Reset Link:</strong> <a href="${data.resetLink}" style="color: #2563eb; text-decoration: underline;">${window.location.origin}${data.resetLink}</a>
-            </div>
-            <a href="${data.resetLink}" class="btn btn-primary" style="width: 100%; text-align: center; font-size: 13px; border-radius: 6px;">Open Password Reset Page →</a>
-          ` : ''}
         `;
       }
 
