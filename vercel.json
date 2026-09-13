@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.js": {
-      "includeFiles": "{server/blog.db,node_modules/sqlite3/**}"
+      "includeFiles": "server/blog.db"
     }
   },
   "rewrites": [

@@ -1,20 +1,92 @@
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
+const initSqlJs = require('sql.js');
 const path = require('path');
 const fs = require('fs');
 
 let db = null;
 let dbInitPromise = null;
 
+class SqlJsWrapper {
+  constructor(sqlDb, persistPath) {
+    this.sqlDb = sqlDb;
+    this.persistPath = persistPath;
+  }
+
+  save() {
+    if (this.persistPath) {
+      try {
+        const data = this.sqlDb.export();
+        fs.writeFileSync(this.persistPath, Buffer.from(data));
+      } catch (err) {
+        console.warn('Warning: Failed to persist database to disk:', err.message);
+      }
+    }
+  }
+
+  async get(sql, params = []) {
+    const stmt = this.sqlDb.prepare(sql);
+    if (params && params.length > 0) {
+      stmt.bind(params);
+    }
+    let row = undefined;
+    if (stmt.step()) {
+      row = stmt.getAsObject();
+    }
+    stmt.free();
+    return row;
+  }
+
+  async all(sql, params = []) {
+    const stmt = this.sqlDb.prepare(sql);
+    if (params && params.length > 0) {
+      stmt.bind(params);
+    }
+    const rows = [];
+    while (stmt.step()) {
+      rows.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return rows;
+  }
+
+  async run(sql, params = []) {
+    this.sqlDb.run(sql, params);
+
+    let lastID = 0;
+    try {
+      const resId = this.sqlDb.exec('SELECT last_insert_rowid() as id');
+      if (resId.length > 0 && resId[0].values.length > 0) {
+        lastID = resId[0].values[0][0];
+      }
+    } catch (e) {}
+
+    let changes = 0;
+    try {
+      const resChanges = this.sqlDb.exec('SELECT changes() as changes');
+      if (resChanges.length > 0 && resChanges[0].values.length > 0) {
+        changes = resChanges[0].values[0][0];
+      }
+    } catch (e) {}
+
+    this.save();
+    return { lastID, changes };
+  }
+
+  async exec(sql) {
+    this.sqlDb.exec(sql);
+    this.save();
+  }
+}
+
 async function initDB() {
   if (db) return db;
   if (dbInitPromise) return dbInitPromise;
 
   dbInitPromise = (async () => {
+    const SQL = await initSqlJs();
+
     let dbPath = path.join(__dirname, 'blog.db');
     
     if (process.env.VERCEL) {
-      // Search for blog.db in probable Vercel output paths
       const possibleSourcePaths = [
         path.join(__dirname, 'blog.db'),
         path.join(__dirname, '../server/blog.db'),
@@ -23,8 +95,8 @@ async function initDB() {
       ];
 
       let sourceDbPath = possibleSourcePaths.find(p => fs.existsSync(p));
-
       const tempDbPath = path.join('/tmp', 'blog.db');
+
       if (!fs.existsSync(tempDbPath)) {
         try {
           if (sourceDbPath) {
@@ -39,14 +111,18 @@ async function initDB() {
       }
       dbPath = tempDbPath;
     }
-    
-    const instance = await open({
-      filename: dbPath,
-      driver: sqlite3.Database
-    });
 
-    // Enable foreign keys
-    await instance.get('PRAGMA foreign_keys = ON');
+    let fileBuffer = null;
+    if (fs.existsSync(dbPath)) {
+      try {
+        fileBuffer = fs.readFileSync(dbPath);
+      } catch (err) {
+        console.warn('Warning: Could not read db file, creating empty DB:', err.message);
+      }
+    }
+
+    const rawDb = fileBuffer ? new SQL.Database(fileBuffer) : new SQL.Database();
+    const instance = new SqlJsWrapper(rawDb, dbPath);
 
     // Create tables
     await instance.exec(`
@@ -79,12 +155,12 @@ async function initDB() {
       );
     `);
 
-    console.log('Database connection opened and schema validated.');
+    console.log('WebAssembly SQLite database initialized successfully.');
 
-    // Auto-seed if database is brand new / empty
+    // Auto-seed if database is empty
     try {
       const blogCount = await instance.get('SELECT COUNT(*) as count FROM blogs');
-      if (!blogCount || blogCount.count === 0) {
+      if (!blogCount || !blogCount.count || blogCount.count === 0) {
         console.log('Database is empty. Populating default seed data...');
         await autoSeed(instance);
       }
