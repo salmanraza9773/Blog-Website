@@ -82,7 +82,18 @@ async function initDB() {
   if (dbInitPromise) return dbInitPromise;
 
   dbInitPromise = (async () => {
-    const SQL = await initSqlJs();
+    const SQL = await initSqlJs({
+      locateFile: file => {
+        const possibleWasmPaths = [
+          path.join(__dirname, '../node_modules/sql.js/dist', file),
+          path.join(process.cwd(), 'node_modules/sql.js/dist', file),
+          path.join(__dirname, 'node_modules/sql.js/dist', file),
+          path.join('/var/task/node_modules/sql.js/dist', file)
+        ];
+        const found = possibleWasmPaths.find(p => fs.existsSync(p));
+        return found || file;
+      }
+    });
 
     let dbPath = path.join(__dirname, 'blog.db');
     

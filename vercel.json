@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.js": {
-      "includeFiles": "server/blog.db"
+      "includeFiles": "{server/blog.db,node_modules/sql.js/dist/sql-wasm.wasm}"
     }
   },
   "rewrites": [
