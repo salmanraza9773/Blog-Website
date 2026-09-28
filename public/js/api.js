@@ -46,6 +46,129 @@ function getUser() {
   }
 }
 
+// HTML escape helper
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Format date helper
+function formatDate(dateString) {
+  if (!dateString) return '';
+  const options = { year: 'numeric', month: 'short', day: 'numeric' };
+  return new Date(dateString).toLocaleDateString(undefined, options);
+}
+
+// Global Markdown Parser with Table, CTA Box, and List support
+function parseMarkdown(md) {
+  if (!md) return '';
+  let text = md.trim();
+
+  // Strip legacy raw pros-cons HTML if present
+  text = text.replace(/<div class="pros-cons-grid">[\s\S]*?<\/div>\s*<\/div>/gi, '');
+  text = text.replace(/## Pros & Cons Breakdown/gi, '');
+
+  // 1. Code blocks (```code```)
+  text = text.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+    return `<pre><code class="language-${lang}">${escapeHtml(code.trim())}</code></pre>`;
+  });
+
+  // 2. Inline code (`code`)
+  text = text.replace(/`([^`]+)`/g, (match, code) => {
+    return `<code>${escapeHtml(code)}</code>`;
+  });
+
+  // 3. CTA Box shortcode: [CTA_BOX title="..." price="..." specs="..." link="..." button="..."]
+  text = text.replace(/\[CTA_BOX title="([^"]+)" price="([^"]+)" specs="([^"]+)" link="([^"]+)" button="([^"]+)"\]/g, (match, title, price, specs, link, button) => {
+    const specPills = specs.split(',').map(s => `<span class="cta-spec-pill">${escapeHtml(s.trim())}</span>`).join('');
+    return `
+      <div class="affiliate-cta-box">
+        <div class="cta-header">
+          <div class="cta-title">${escapeHtml(title)}</div>
+          <span class="cta-price-tag">${escapeHtml(price)}</span>
+        </div>
+        <div class="cta-specs">${specPills}</div>
+        <a href="${escapeHtml(link)}" target="_blank" rel="nofollow sponsored" class="cta-button">
+          <span>${escapeHtml(button)}</span>
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        </a>
+      </div>
+    `;
+  });
+
+  // 4. Markdown Tables (| Header | Header |\n| --- | --- |\n| Cell | Cell |)
+  text = text.replace(/^\|(.+)\|\r?\n\|( *[-:]+[-| :]*)\|\r?\n((?:\|.+\|\r?\n?)*)/gm, (match, headerRow, separatorRow, bodyRows) => {
+    const headers = headerRow.split('|').map(h => h.trim()).filter(h => h.length > 0);
+    const ths = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+
+    const rows = bodyRows.trim().split('\n').map(row => {
+      const cells = row.split('|').map(c => c.trim()).filter(c => c.length > 0);
+      const tds = cells.map(c => `<td>${escapeHtml(c)}</td>`).join('');
+      return `<tr>${tds}</tr>`;
+    }).join('\n');
+
+    return `<table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>`;
+  });
+
+  // 5. Headings
+  text = text.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+  text = text.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+  text = text.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+
+  // 6. Blockquotes
+  text = text.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>');
+  text = text.replace(/<\/blockquote>\s*<blockquote>/g, '<br>');
+
+  // 7. Unordered Lists (group consecutive items into <ul>)
+  text = text.replace(/((?:^[ \t]*[\-\*] .*\r?\n?)+)/gm, (match) => {
+    const items = match.trim().split('\n').map(line => {
+      const content = line.replace(/^[ \t]*[\-\*] /, '').trim();
+      return `<li>${content}</li>`;
+    }).join('\n');
+    return `<ul>\n${items}\n</ul>`;
+  });
+
+  // 8. Ordered Lists (group consecutive items into <ol>)
+  text = text.replace(/((?:^[ \t]*\d+\. .*\r?\n?)+)/gm, (match) => {
+    const items = match.trim().split('\n').map(line => {
+      const content = line.replace(/^[ \t]*\d+\. /, '').trim();
+      return `<li>${content}</li>`;
+    }).join('\n');
+    return `<ol>\n${items}\n</ol>`;
+  });
+
+  // 9. Inline styling
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  text = text.replace(/_([^_]+)_/g, '<em>$1</em>');
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="nofollow sponsored" style="text-decoration:underline;">$1</a>');
+
+  // 10. Horizontal rules
+  text = text.replace(/^---$/gm, '<hr>');
+
+  // 11. Paragraph splits
+  const blocks = text.split(/\n\s*\n/);
+  const parsedBlocks = blocks.map(block => {
+    const b = block.trim();
+    if (!b) return '';
+    if (b.startsWith('<h1') || b.startsWith('<h2') || b.startsWith('<h3') || 
+        b.startsWith('<h4') || b.startsWith('<h5') || b.startsWith('<table') || 
+        b.startsWith('<ul') || b.startsWith('<ol') || b.startsWith('<div') || 
+        b.startsWith('<blockquote') || b.startsWith('<pre') || b.startsWith('<hr')) {
+      return b;
+    }
+    return `<p>${b.replace(/\n/g, '<br>')}</p>`;
+  });
+
+  return parsedBlocks.filter(Boolean).join('\n\n');
+}
+
 // Fetch wrapper
 async function apiRequest(endpoint, options = {}) {
   const token = getToken();
@@ -122,22 +245,6 @@ async function toggleTheme() {
   const isDark = document.body.classList.toggle('dark-theme');
   const newTheme = isDark ? 'dark' : 'light';
   localStorage.setItem('theme', newTheme);
-  
-  const user = getUser();
-  if (user) {
-    try {
-      const data = await apiRequest('/api/users/profile');
-      const prefs = data.user.preferences || {};
-      prefs.theme = newTheme;
-      
-      await apiRequest('/api/users/preferences', {
-        method: 'PUT',
-        body: { savedStreams: prefs.savedStreams || [], theme: newTheme }
-      });
-    } catch (e) {
-      console.warn('Theme preferences sync failed:', e);
-    }
-  }
 }
 
 // Scroll header logic
@@ -196,7 +303,6 @@ function initNavbarStreams() {
   const tabs = navStreams.querySelectorAll('.stream-tab');
   const indicator = document.getElementById('navStreamsIndicator');
 
-  // Highlight active
   tabs.forEach(tab => {
     const streamName = tab.getAttribute('data-stream');
     let isActive = false;
@@ -219,11 +325,9 @@ function initNavbarStreams() {
     }
   });
 
-  // Position indicator
   setTimeout(updateNavIndicator, 150);
   window.addEventListener('resize', updateNavIndicator);
 
-  // Snapping listeners
   tabs.forEach(tab => {
     tab.addEventListener('mouseenter', () => {
       if (indicator) {
@@ -265,7 +369,7 @@ function initHeader() {
       authArea.innerHTML = `
         <div class="dropdown" id="userProfileDropdown">
           <button class="dropdown-trigger" id="profileDropdownTrigger" style="font-weight: 600; font-family: var(--font-sans); display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 10px; background: #2563eb; color: #fff; padding: 2px 8px; border-radius: 99px; font-weight: 700; letter-spacing: 0.5px;">SUPER ADMIN</span>
+            <span style="font-size: 10px; background: #2563eb; color: #fff; padding: 2px 8px; border-radius: 99px; font-weight: 700; letter-spacing: 0.5px;">ADMIN</span>
             <span>@${user.username}</span>
             <span style="font-size: 10px;">▼</span>
           </button>
@@ -322,7 +426,7 @@ function handleImageError(imgElement, streamName) {
   if (imgElement.classList.contains('article-cover')) {
     placeholder.classList.add('article-cover');
   }
-  placeholder.innerHTML = `<span>${streamName.toUpperCase()}</span>`;
+  placeholder.innerHTML = `<span>${(streamName || 'STORY').toUpperCase()}</span>`;
   
   const computedStyle = window.getComputedStyle(imgElement);
   placeholder.style.borderRadius = computedStyle.borderRadius || '8px';
@@ -330,8 +434,9 @@ function handleImageError(imgElement, streamName) {
   imgElement.replaceWith(placeholder);
 }
 
-// Render Universal Footer across all pages
+// Render Universal Footer across public pages
 function renderUniversalFooter() {
+  if (window.location.pathname.endsWith('admin.html')) return;
   if (document.querySelector('footer.site-footer')) return;
 
   const footer = document.createElement('footer');
@@ -371,12 +476,13 @@ function renderUniversalFooter() {
           <li><a href="privacy.html">Privacy Policy</a></li>
           <li><a href="terms.html">Terms of Service</a></li>
           <li><a href="disclosure.html">Affiliate Disclosure</a></li>
+          <li><a href="admin.html" style="color: var(--text-secondary); opacity: 0.85;">Admin Studio 🔒</a></li>
         </ul>
       </div>
     </div>
 
     <div class="footer-bottom">
-      <div>© 2026 KnowledgeShare Media Inc. All rights reserved.</div>
+      <div>© 2026 KnowledgeShare Media Inc. All rights reserved. • <a href="admin.html" style="color: inherit; text-decoration: underline;">Admin Portal</a></div>
       <div>Editorial Integrity & Commercial Transparency Standards Verified.</div>
     </div>
   `;

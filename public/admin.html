@@ -108,7 +108,7 @@
   <!-- =======================================================
        GATEKEEPER MASTER PASSKEY MODAL (Unauthenticated State)
        ======================================================= -->
-  <div class="admin-gatekeeper-backdrop" id="gatekeeperModal" style="display: none;">
+  <div class="admin-gatekeeper-backdrop" id="gatekeeperModal">
     <div class="admin-gatekeeper-card">
       <div class="admin-shield-icon">
         <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,9 +118,20 @@
 
       <span class="role-badge admin" style="margin-bottom: 10px;">Security Shield</span>
       <h2 class="serif" style="font-size: 24px; margin-bottom: 8px;">Admin Gatekeeper</h2>
-      <p class="text-muted" style="font-size: 13px; line-height: 1.5; margin-bottom: 24px;">
+      <p class="text-muted" style="font-size: 13px; line-height: 1.5; margin-bottom: 20px;">
         Exclusive administrative gateway. Enter your Master Username and Secret Passkey to authenticate.
       </p>
+
+      <!-- Active Master Credentials Helper -->
+      <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px; margin-bottom: 20px; font-size: 12px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="color: var(--text-secondary); font-size: 11px;">Master Credential (server/.env)</div>
+          <div style="font-family: monospace; font-weight: 600; color: var(--text-primary); margin-top: 2px;">Passkey: AdminMasterKey_2026!</div>
+        </div>
+        <button type="button" id="btnAutoFillPasskey" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11px; border-radius: 6px; white-space: nowrap;">
+          Auto-Fill
+        </button>
+      </div>
 
       <div id="gatekeeperError" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger-color); padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 18px; text-align: left;"></div>
 

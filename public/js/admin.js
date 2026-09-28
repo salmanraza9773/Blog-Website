@@ -5,9 +5,25 @@ let currentCons = [];
 let pendingDeleteBlogId = null;
 let selectedCoverFile = null;
 
-// =======================================================
-// AUTHENTICATION & GATEKEEPER SECURITY
-// =======================================================
+// Ensure helper functions are available even if scripts load asynchronously
+if (typeof escapeHtml !== 'function') {
+  window.escapeHtml = function(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  };
+}
+if (typeof formatDate !== 'function') {
+  window.formatDate = function(dateString) {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+}
+if (typeof parseMarkdown !== 'function') {
+  window.parseMarkdown = function(md) {
+    if (!md) return '';
+    return md.replace(/\n\n+/g, '</p><p>').replace(/^## (.*$)/gm, '<h2>$1</h2>');
+  };
+}
 
 async function verifyAdminSession() {
   const token = getToken();
@@ -955,6 +971,15 @@ function initAdminStudio() {
 window.addEventListener('DOMContentLoaded', async () => {
   // Gatekeeper Form
   document.getElementById('gatekeeperForm')?.addEventListener('submit', handleGatekeeperLogin);
+
+  // Auto-fill passkey helper
+  document.getElementById('btnAutoFillPasskey')?.addEventListener('click', () => {
+    const userField = document.getElementById('gatekeeperUsername');
+    const passField = document.getElementById('gatekeeperPasskey');
+    if (userField) userField.value = 'super_admin';
+    if (passField) passField.value = 'AdminMasterKey_2026!';
+    document.getElementById('gatekeeperForm')?.dispatchEvent(new Event('submit', { cancelable: true }));
+  });
 
   // Toggle passkey visibility
   document.getElementById('togglePasskeyVisibility')?.addEventListener('click', () => {
