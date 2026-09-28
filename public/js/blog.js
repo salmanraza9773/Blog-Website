@@ -1,4 +1,4 @@
-// Get query param
+// Helper to get query parameters
 function getQueryParam(name) {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get(name);
@@ -6,137 +6,144 @@ function getQueryParam(name) {
 
 // Format date helper
 function formatDate(dateString) {
-  const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+  if (!dateString) return '';
+  const options = { year: 'numeric', month: 'short', day: 'numeric' };
   return new Date(dateString).toLocaleDateString(undefined, options);
 }
 
-// Markdown Parser Helper with Tables, CTA Boxes, and Pros/Cons support
-function parseMarkdown(md) {
-  if (!md) return '';
-  let html = md;
-  
-  // Store valid safe HTML tags so they aren't double-escaped
-  const htmlTokens = [];
-  const tokenPlaceholder = (idx) => `___HTML_TOKEN_${idx}___`;
-
-  // Preserve safe HTML tags (div, span, headings, lists, tables, etc.)
-  html = html.replace(/<\/?(div|span|h[1-6]|p|ul|ol|li|strong|em|blockquote|table|thead|tbody|tr|th|td|a|svg|path|code|pre|img|br|hr)[^>]*>/gi, (match) => {
-    const idx = htmlTokens.length;
-    htmlTokens.push(match);
-    return tokenPlaceholder(idx);
-  });
-
-  // Escape remaining raw `<` and `>` characters to prevent XSS
-  html = html
+// HTML escape helper to prevent XSS and tag leakage
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
-  // Restore preserved HTML tokens
-  htmlTokens.forEach((token, idx) => {
-    html = html.replace(tokenPlaceholder(idx), token);
+// Markdown Parser Helper with Tables, CTA Boxes, and Lists
+function parseMarkdown(md) {
+  if (!md) return '';
+  let text = md.trim();
+
+  // Strip legacy pros-cons HTML if embedded in markdown body so structured cards don't collide
+  text = text.replace(/<div class="pros-cons-grid">[\s\S]*?<\/div>\s*<\/div>/gi, '');
+  text = text.replace(/## Pros & Cons Breakdown/gi, '');
+
+  // 1. Code blocks (```code```)
+  text = text.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+    return `<pre><code class="language-${lang}">${escapeHtml(code.trim())}</code></pre>`;
   });
 
-  // Code blocks (```code```)
-  html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-  
-  // Inline code (`code`)
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // 2. Inline code (`code`)
+  text = text.replace(/`([^`]+)`/g, (match, code) => {
+    return `<code>${escapeHtml(code)}</code>`;
+  });
 
-  // CTA Box shortcode: [CTA_BOX title="..." price="..." specs="..." link="..." button="..."]
-  html = html.replace(/\[CTA_BOX title="([^"]+)" price="([^"]+)" specs="([^"]+)" link="([^"]+)" button="([^"]+)"\]/g, (match, title, price, specs, link, button) => {
-    const specPills = specs.split(',').map(s => `<span class="cta-spec-pill">${s.trim()}</span>`).join('');
+  // 3. CTA Box shortcode: [CTA_BOX title="..." price="..." specs="..." link="..." button="..."]
+  text = text.replace(/\[CTA_BOX title="([^"]+)" price="([^"]+)" specs="([^"]+)" link="([^"]+)" button="([^"]+)"\]/g, (match, title, price, specs, link, button) => {
+    const specPills = specs.split(',').map(s => `<span class="cta-spec-pill">${escapeHtml(s.trim())}</span>`).join('');
     return `
       <div class="affiliate-cta-box">
         <div class="cta-header">
-          <div class="cta-title">${title}</div>
-          <span class="cta-price-tag">${price}</span>
+          <div class="cta-title">${escapeHtml(title)}</div>
+          <span class="cta-price-tag">${escapeHtml(price)}</span>
         </div>
         <div class="cta-specs">${specPills}</div>
-        <a href="${link}" target="_blank" rel="nofollow sponsored" class="cta-button">
-          <span>${button}</span>
+        <a href="${escapeHtml(link)}" target="_blank" rel="nofollow sponsored" class="cta-button">
+          <span>${escapeHtml(button)}</span>
           <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
         </a>
       </div>
     `;
   });
 
-  // Markdown Tables (| Header | Header |\n| --- | --- |\n| Cell | Cell |)
-  html = html.replace(/^\|(.+)\|\r?\n\|( *[-:]+[-| :]*)\|\r?\n((?:\|.+\|\r?\n?)*)/gm, (match, headerRow, separatorRow, bodyRows) => {
+  // 4. Markdown Tables (| Header | Header |\n| --- | --- |\n| Cell | Cell |)
+  text = text.replace(/^\|(.+)\|\r?\n\|( *[-:]+[-| :]*)\|\r?\n((?:\|.+\|\r?\n?)*)/gm, (match, headerRow, separatorRow, bodyRows) => {
     const headers = headerRow.split('|').map(h => h.trim()).filter(h => h.length > 0);
-    const ths = headers.map(h => `<th>${h}</th>`).join('');
+    const ths = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
 
     const rows = bodyRows.trim().split('\n').map(row => {
       const cells = row.split('|').map(c => c.trim()).filter(c => c.length > 0);
-      const tds = cells.map(c => `<td>${c}</td>`).join('');
+      const tds = cells.map(c => `<td>${escapeHtml(c)}</td>`).join('');
       return `<tr>${tds}</tr>`;
     }).join('\n');
 
     return `<table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>`;
   });
 
-  // Headings (## Heading, # Heading)
-  html = html.replace(/^\s*## (.*?)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^\s*# (.*?)$/gm, '<h1>$1</h1>');
-  html = html.replace(/^\s*### (.*?)$/gm, '<h3>$1</h3>');
+  // 5. Headings (# Heading, ## Heading, ### Heading)
+  text = text.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+  text = text.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+  text = text.replace(/^# (.*$)/gm, '<h1>$1</h1>');
 
-  // Blockquotes (> text)
-  html = html.replace(/^\s*&gt; (.*?)$/gm, '<blockquote>$1</blockquote>');
+  // 6. Blockquotes (> text)
+  text = text.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>');
+  text = text.replace(/<\/blockquote>\s*<blockquote>/g, '<br>');
 
-  // Bold (**text** or __text__)
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  // 7. Unordered Lists (group consecutive items into <ul>)
+  text = text.replace(/((?:^[ \t]*[\-\*] .*\r?\n?)+)/gm, (match) => {
+    const items = match.trim().split('\n').map(line => {
+      const content = line.replace(/^[ \t]*[\-\*] /, '').trim();
+      return `<li>${content}</li>`;
+    }).join('\n');
+    return `<ul>\n${items}\n</ul>`;
+  });
 
-  // Italics (*text* or _text_)
-  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+  // 8. Ordered Lists (group consecutive items into <ol>)
+  text = text.replace(/((?:^[ \t]*\d+\. .*\r?\n?)+)/gm, (match) => {
+    const items = match.trim().split('\n').map(line => {
+      const content = line.replace(/^[ \t]*\d+\. /, '').trim();
+      return `<li>${content}</li>`;
+    }).join('\n');
+    return `<ol>\n${items}\n</ol>`;
+  });
 
-  // Links ([label](url))
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="nofollow sponsored" style="text-decoration:underline;">$1</a>');
+  // 9. Inline styling (Bold, Italics, Links)
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  text = text.replace(/_([^_]+)_/g, '<em>$1</em>');
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="nofollow sponsored" style="text-decoration:underline;">$1</a>');
 
-  // Unordered Lists (* item)
-  html = html.replace(/^\s*[\-\*] (.*?)$/gm, '<li>$1</li>');
+  // 10. Horizontal rules
+  text = text.replace(/^---$/gm, '<hr>');
 
-  // Paragraph splits
-  const blocks = html.split(/\n\n+/);
-  html = blocks.map(block => {
-    block = block.trim();
-    if (!block) return '';
-    if (block.startsWith('<h') || block.startsWith('<pre') || block.startsWith('<block') || block.startsWith('<ul') || block.startsWith('<li') || block.startsWith('<table') || block.startsWith('<div')) {
-      return block;
+  // 11. Paragraph splits
+  const blocks = text.split(/\n\s*\n/);
+  const parsedBlocks = blocks.map(block => {
+    const b = block.trim();
+    if (!b) return '';
+    if (b.startsWith('<h1') || b.startsWith('<h2') || b.startsWith('<h3') || 
+        b.startsWith('<h4') || b.startsWith('<h5') || b.startsWith('<table') || 
+        b.startsWith('<ul') || b.startsWith('<ol') || b.startsWith('<div') || 
+        b.startsWith('<blockquote') || b.startsWith('<pre') || b.startsWith('<hr')) {
+      return b;
     }
-    return `<p>${block.replace(/\n/g, '<br>')}</p>`;
-  }).join('\n');
+    return `<p>${b.replace(/\n/g, '<br>')}</p>`;
+  });
 
-  return html;
+  return parsedBlocks.filter(Boolean).join('\n\n');
 }
 
-// Helper to inject Display Ad Placeholders
+// Injects self-collapsing Ad Slots (remains display:none when :empty without placeholder borders or labels)
 function injectAdSlots(htmlContent) {
-  let paragraphs = htmlContent.split('</p>');
+  const paragraphs = htmlContent.split('</p>');
+  if (paragraphs.length <= 2) {
+    return htmlContent;
+  }
+
   let resultHtml = '';
+  const adSlot1 = `<div class="ad-slot-in-article" id="ad-slot-article-1"></div>`;
+  const adSlot2 = `<div class="ad-slot-in-article" id="ad-slot-article-2"></div>`;
 
-  const adSlot1 = `
-    <div class="ad-slot-in-article">
-      <div class="ad-label">Sponsored / Advertisement</div>
-      <div class="ad-content-placeholder">
-        [AdSense Display Unit - Responsive In-Article Banner (Slot 1)]
-      </div>
-    </div>
-  `;
-
-  const adSlot2 = `
-    <div class="ad-slot-in-article">
-      <div class="ad-label">Sponsored / Advertisement</div>
-      <div class="ad-content-placeholder">
-        [AdSense Display Unit - High-Impact Verdict Banner (Slot 2)]
-      </div>
-    </div>
-  `;
+  const midPoint = Math.floor(paragraphs.length * 0.65);
 
   for (let i = 0; i < paragraphs.length; i++) {
-    if (paragraphs[i].trim().length > 0) {
-      resultHtml += paragraphs[i] + '</p>';
+    const part = paragraphs[i].trim();
+    if (part.length > 0) {
+      resultHtml += part + '</p>';
     }
 
     // Insert Slot 1 after 2nd paragraph
@@ -144,13 +151,48 @@ function injectAdSlots(htmlContent) {
       resultHtml += adSlot1;
     }
 
-    // Insert Slot 2 before Conclusion/Verdict or mid-way
-    if (i === Math.floor(paragraphs.length * 0.75) && paragraphs.length > 4) {
+    // Insert Slot 2 mid-way if article is sufficiently long
+    if (i === midPoint && paragraphs.length > 5) {
       resultHtml += adSlot2;
     }
   }
 
   return resultHtml;
+}
+
+// Structured Pros and Cons Renderer
+function renderProsCons(prosJson, consJson) {
+  let pros = [];
+  let cons = [];
+
+  try {
+    pros = typeof prosJson === 'string' ? JSON.parse(prosJson) : (prosJson || []);
+  } catch (e) { pros = []; }
+
+  try {
+    cons = typeof consJson === 'string' ? JSON.parse(consJson) : (consJson || []);
+  } catch (e) { cons = []; }
+
+  if (!Array.isArray(pros)) pros = [];
+  if (!Array.isArray(cons)) cons = [];
+
+  if (pros.length === 0 && cons.length === 0) return '';
+
+  const prosListHtml = pros.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+  const consListHtml = cons.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+
+  return `
+    <div class="pros-cons-grid">
+      <div class="pro-card">
+        <h5>✓ Key Advantages</h5>
+        <ul>${prosListHtml}</ul>
+      </div>
+      <div class="con-card">
+        <h5>✕ Key Considerations</h5>
+        <ul>${consListHtml}</ul>
+      </div>
+    </div>
+  `;
 }
 
 // Render shimmer loading for article
@@ -184,8 +226,6 @@ async function loadBlogDetails(blogId) {
   renderArticleShimmer();
   
   try {
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     const data = await apiRequest(`/api/blogs/${blogId}`);
     const blog = data.blog;
     const isLiked = data.isLiked;
@@ -199,57 +239,59 @@ async function loadBlogDetails(blogId) {
     document.title = `${blog.title} - KnowledgeShare`;
     
     const coverHtml = blog.cover_image_path ? 
-      `<img class="article-cover" src="${blog.cover_image_path}" alt="${blog.title}" onerror="handleImageError(this, '${blog.stream}')">` : '';
+      `<img class="article-cover" src="${blog.cover_image_path}" alt="${escapeHtml(blog.title)}" onerror="handleImageError(this, '${blog.stream}')">` : '';
       
     const formattedDate = formatDate(blog.created_at);
-    const readTimeHtml = blog.estimated_read_time ? `<span style="margin-left: 12px; color: var(--text-secondary);">• ${blog.estimated_read_time}</span>` : '';
-    const summaryHtml = blog.summary ? `<p class="article-summary" style="font-size: 18px; color: var(--text-secondary); line-height: 1.6; margin: 16px 0 24px 0; font-style: italic;">${blog.summary}</p>` : '';
+    const readTimeHtml = blog.estimated_read_time ? `<span style="margin-left: 12px; color: var(--text-secondary);">• ${escapeHtml(blog.estimated_read_time)}</span>` : '';
+    const summaryHtml = blog.summary ? `<p class="article-summary" style="font-size: 18px; color: var(--text-secondary); line-height: 1.6; margin: 16px 0 24px 0; font-style: italic;">${escapeHtml(blog.summary)}</p>` : '';
 
     // Run Markdown parser and inject ad slots
     const parsedHtml = parseMarkdown(blog.content);
     const bodyContentHtml = injectAdSlots(parsedHtml);
 
+    // Structured Pros and Cons
+    const prosConsHtml = renderProsCons(blog.pros_json, blog.cons_json);
+
     // Primary CTA Box if affiliate is enabled
     let primaryCtaHtml = '';
-    if (blog.affiliate_enabled && blog.primary_cta_text && blog.primary_cta_url !== '#') {
+    if (blog.affiliate_enabled && blog.primary_cta_text && blog.primary_cta_url && blog.primary_cta_url !== '#') {
       primaryCtaHtml = `
         <div class="affiliate-cta-box" style="margin-top: 40px;">
           <div class="cta-header">
             <div>
-              <div class="cta-title">Featured Partner Deal: ${blog.title}</div>
+              <div class="cta-title">Featured Partner Deal: ${escapeHtml(blog.title)}</div>
               <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Verified Stock & Best Price Guarantee</p>
             </div>
             <span class="cta-price-tag">Top Value</span>
           </div>
-          <a href="${blog.primary_cta_url}" target="_blank" rel="nofollow sponsored" class="cta-button">
-            <span>${blog.primary_cta_text}</span>
+          <a href="${escapeHtml(blog.primary_cta_url)}" target="_blank" rel="nofollow sponsored" class="cta-button">
+            <span>${escapeHtml(blog.primary_cta_text)}</span>
             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
           </a>
         </div>
       `;
     }
 
-    // Author or Admin action buttons
+    // Admin action buttons if logged in as admin
     const user = getUser();
-    const canManage = user && (user.role === 'admin' || user.id === blog.author_id);
-    const manageControlsHtml = canManage ? `
+    const isAdmin = user && (user.role === 'super_admin' || user.role === 'admin');
+    const manageControlsHtml = isAdmin ? `
       <div style="margin-top: 12px;">
-        <a href="create.html?edit=${blog.id}" class="action-btn-sm" style="display:inline-block; padding: 6px 14px; border-radius: 99px; text-decoration:none;">✏️ Edit Article</a>
-        <button id="deleteArticleBtn" class="action-btn-sm action-btn-danger" style="padding: 6px 14px; border-radius: 99px; cursor:pointer;">🗑️ Delete Article</button>
+        <a href="admin.html?edit=${blog.id}#editor" class="action-btn-sm" style="display:inline-block; padding: 6px 14px; border-radius: 99px; text-decoration:none; color: #2563eb; border-color: #2563eb;">✏️ Edit in Studio</a>
       </div>
     ` : '';
 
     container.innerHTML = `
       <div class="article-header">
         <div class="article-stream">
-          <span class="badge">${blog.stream}</span>
+          <span class="badge">${escapeHtml(blog.stream)}</span>
           ${readTimeHtml}
         </div>
-        <h1 class="article-title serif">${blog.title}</h1>
+        <h1 class="article-title serif">${escapeHtml(blog.title)}</h1>
         ${summaryHtml}
         <div class="article-author-card">
           <div class="author-info">
-            <span class="author-name">@${blog.author_name}</span>
+            <span class="author-name">By ${escapeHtml(blog.author_name || 'Super Admin')}</span>
             <span class="article-date">Published ${formattedDate}</span>
             ${manageControlsHtml}
           </div>
@@ -258,7 +300,7 @@ async function loadBlogDetails(blogId) {
               <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="display:inline-block; vertical-align:middle;">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
               </svg>
-              <span id="likesCount" style="margin-left:4px; font-weight:600;">${blog.likes_count}</span>
+              <span id="likesCount" style="margin-left:4px; font-weight:600;">${blog.likes_count || 0}</span>
             </button>
           </div>
         </div>
@@ -274,19 +316,15 @@ async function loadBlogDetails(blogId) {
       
       <div class="article-content serif">
         ${bodyContentHtml}
+        ${prosConsHtml}
         ${primaryCtaHtml}
       </div>
 
-      <!-- Persistent Footer Ad Slot (Slot 3) -->
-      <div class="ad-slot-footer">
-        <div class="ad-label">Sponsored / Advertisement</div>
-        <div class="ad-content-placeholder">
-          [AdSense Persistent Banner - Footer Display Unit (Slot 3)]
-        </div>
-      </div>
+      <!-- Self-Collapsing Footer Ad Slot -->
+      <div class="ad-slot-footer" id="ad-slot-footer"></div>
 
-      <div class="article-footer">
-        <a href="index.html" class="btn btn-secondary">← Back to Feed</a>
+      <div class="article-footer" style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+        <a href="index.html" class="btn btn-secondary">← Back to Publication Feed</a>
       </div>
     `;
 
@@ -294,24 +332,6 @@ async function loadBlogDetails(blogId) {
     const likeBtn = document.getElementById('likeBtn');
     if (likeBtn) {
       likeBtn.addEventListener('click', () => handleLikeToggle(blogId));
-    }
-
-    // Bind delete functionality if user is authorized
-    const deleteBtn = document.getElementById('deleteArticleBtn');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', async () => {
-        if (!confirm('Are you sure you want to delete this article?')) return;
-        try {
-          await apiRequest(`/api/blogs/${blogId}`, { method: 'DELETE' });
-          showToast('Article deleted successfully.');
-          setTimeout(() => {
-            window.location.href = 'index.html';
-          }, 1200);
-        } catch (err) {
-          console.error('Delete article error:', err);
-          showToast(err.message, 'error');
-        }
-      });
     }
 
     // Load related suggestions
@@ -331,15 +351,6 @@ async function loadBlogDetails(blogId) {
 
 // Like handler
 async function handleLikeToggle(blogId) {
-  const user = getUser();
-  if (!user) {
-    showToast('You must sign in to like this story.', 'error');
-    setTimeout(() => {
-      window.location.href = 'auth.html';
-    }, 2000);
-    return;
-  }
-
   try {
     const data = await apiRequest(`/api/blogs/${blogId}/like`, { method: 'POST' });
     const likeBtn = document.getElementById('likeBtn');
@@ -347,10 +358,10 @@ async function handleLikeToggle(blogId) {
     
     if (data.liked) {
       likeBtn.classList.add('liked');
-      showToast('Story added to your likes.');
+      showToast('Article appreciated.');
     } else {
       likeBtn.classList.remove('liked');
-      showToast('Story removed from your likes.');
+      showToast('Appreciation removed.');
     }
     
     likesCount.innerText = data.likesCount;
@@ -364,24 +375,6 @@ async function handleLikeToggle(blogId) {
 async function loadRelatedBlogs(blogId) {
   const relatedGrid = document.getElementById('relatedGrid');
   if (!relatedGrid) return;
-  
-  relatedGrid.innerHTML = `
-    <div class="shimmer-card" style="padding:16px; grid-template-columns:1fr; height: 260px;">
-      <div class="shimmer" style="width:100%; height:120px; border-radius:8px;"></div>
-      <div class="shimmer-text-meta shimmer" style="width:60px; margin-top:12px;"></div>
-      <div class="shimmer-title shimmer" style="width:90%; height:20px; margin-top:8px;"></div>
-    </div>
-    <div class="shimmer-card" style="padding:16px; grid-template-columns:1fr; height: 260px;">
-      <div class="shimmer" style="width:100%; height:120px; border-radius:8px;"></div>
-      <div class="shimmer-text-meta shimmer" style="width:60px; margin-top:12px;"></div>
-      <div class="shimmer-title shimmer" style="width:90%; height:20px; margin-top:8px;"></div>
-    </div>
-    <div class="shimmer-card" style="padding:16px; grid-template-columns:1fr; height: 260px;">
-      <div class="shimmer" style="width:100%; height:120px; border-radius:8px;"></div>
-      <div class="shimmer-text-meta shimmer" style="width:60px; margin-top:12px;"></div>
-      <div class="shimmer-title shimmer" style="width:90%; height:20px; margin-top:8px;"></div>
-    </div>
-  `;
   
   try {
     const data = await apiRequest(`/api/blogs/${blogId}/related`);
@@ -399,20 +392,20 @@ async function loadRelatedBlogs(blogId) {
       card.className = 'related-card';
       card.innerHTML = `
         <div class="related-card-image-wrapper">
-          <img class="related-card-image" src="${coverImg}" alt="${blog.title}" onerror="handleImageError(this, '${blog.stream}')">
+          <img class="related-card-image" src="${coverImg}" alt="${escapeHtml(blog.title)}" onerror="handleImageError(this, '${blog.stream}')">
         </div>
         <div class="related-card-body">
           <div>
-            <span class="badge" style="margin-bottom:8px;">${blog.stream}</span>
-            <h4 class="related-card-title serif">${blog.title}</h4>
+            <span class="badge" style="margin-bottom:8px;">${escapeHtml(blog.stream)}</span>
+            <h4 class="related-card-title serif">${escapeHtml(blog.title)}</h4>
           </div>
           <div style="font-size:12px; color:var(--text-secondary); display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-            <span>@${blog.author_name}</span>
+            <span>By ${escapeHtml(blog.author_name || 'Editorial Team')}</span>
             <span style="display:inline-flex; align-items:center; gap:2px;">
               <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
               </svg>
-              ${blog.likes_count}
+              ${blog.likes_count || 0}
             </span>
           </div>
         </div>

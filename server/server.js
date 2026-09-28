@@ -2,6 +2,45 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+
+// Ensure environment variables are loaded
+function loadEnv() {
+  const envPaths = [
+    path.join(__dirname, '.env'),
+    path.join(__dirname, '../.env')
+  ];
+  for (const envPath of envPaths) {
+    if (fs.existsSync(envPath)) {
+      if (typeof process.loadEnvFile === 'function') {
+        try {
+          process.loadEnvFile(envPath);
+          return;
+        } catch (e) {}
+      }
+      try {
+        const content = fs.readFileSync(envPath, 'utf8');
+        content.split('\n').forEach(line => {
+          line = line.trim();
+          if (line && !line.startsWith('#')) {
+            const eqIdx = line.indexOf('=');
+            if (eqIdx > 0) {
+              const key = line.substring(0, eqIdx).trim();
+              const val = line.substring(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
+              if (!process.env[key]) {
+                process.env[key] = val;
+              }
+            }
+          }
+        });
+      } catch (err) {
+        console.warn('Warning: could not parse env file:', err.message);
+      }
+      break;
+    }
+  }
+}
+loadEnv();
+
 const { initDB } = require('./db');
 
 const app = express();
@@ -32,6 +71,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 const authRoutes = require('./routes/auth');
 const blogRoutes = require('./routes/blogs');
 const userRoutes = require('./routes/users');
+const adminRoutes = require('./routes/admin');
 
 // Database initialization middleware for serverless/cold starts
 app.use(async (req, res, next) => {
@@ -45,6 +85,7 @@ app.use(async (req, res, next) => {
 });
 
 // Map Routes
+app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/users', userRoutes);

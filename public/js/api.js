@@ -248,22 +248,31 @@ function initNavbarStreams() {
   });
 }
 
-// Init global header menu overlays
+// Init global header menu overlays (Pure Editorial for Public, Admin-Only for Authenticated Admins)
 function initHeader() {
   const authArea = document.getElementById('authArea');
-  if (authArea) {
-    const user = getUser();
-    if (user) {
-      const adminLinkHtml = user.role === 'admin' ? `<a class="dropdown-item" href="admin.html" style="font-weight: 600; color: #2563eb;">Admin Dashboard</a>` : '';
+  const writeLink = document.getElementById('writeLink');
+  const user = getUser();
+  const isAdmin = user && (user.role === 'super_admin' || user.role === 'admin');
+
+  if (isAdmin) {
+    if (writeLink) {
+      writeLink.style.display = 'inline-block';
+      writeLink.setAttribute('href', 'admin.html#editor');
+    }
+    if (authArea) {
+      authArea.style.display = 'block';
       authArea.innerHTML = `
         <div class="dropdown" id="userProfileDropdown">
-          <button class="dropdown-trigger" id="profileDropdownTrigger" style="font-weight: 600; font-family: var(--font-sans);">
-            @${user.username} ${user.role === 'admin' ? '<span style="font-size:10px; background:#2563eb; color:#fff; padding:2px 6px; border-radius:99px; margin-left:4px;">ADMIN</span>' : ''} <span style="font-size: 10px;">▼</span>
+          <button class="dropdown-trigger" id="profileDropdownTrigger" style="font-weight: 600; font-family: var(--font-sans); display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 10px; background: #2563eb; color: #fff; padding: 2px 8px; border-radius: 99px; font-weight: 700; letter-spacing: 0.5px;">SUPER ADMIN</span>
+            <span>@${user.username}</span>
+            <span style="font-size: 10px;">▼</span>
           </button>
           <div class="dropdown-menu" id="profileDropdownMenu">
-            ${adminLinkHtml}
-            <a class="dropdown-item" href="profile.html">My Dashboard</a>
-            <button class="dropdown-item" id="logoutBtn" style="border:none; background:none; text-align:left; width:100%; cursor:pointer;">Sign Out</button>
+            <a class="dropdown-item" href="admin.html" style="font-weight: 600; color: #2563eb;">Admin Studio</a>
+            <a class="dropdown-item" href="admin.html#editor">Write / Edit Article</a>
+            <button class="dropdown-item" id="logoutBtn" style="border:none; background:none; text-align:left; width:100%; cursor:pointer; color: var(--danger-color);">Sign Out</button>
           </div>
         </div>
       `;
@@ -284,14 +293,22 @@ function initHeader() {
       if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
           removeToken();
-          showToast('Signed out successfully.');
+          showToast('Signed out of Admin Studio.');
           setTimeout(() => {
             window.location.href = 'index.html';
-          }, 1000);
+          }, 800);
         });
       }
-    } else {
-      authArea.innerHTML = `<a href="auth.html" class="btn btn-primary">Sign In</a>`;
+    }
+  } else {
+    // Pure editorial experience: zero visible authentication clutter for general public visitors
+    if (writeLink) {
+      writeLink.style.display = 'none';
+      writeLink.remove();
+    }
+    if (authArea) {
+      authArea.innerHTML = '';
+      authArea.style.display = 'none';
     }
   }
 }

@@ -3,196 +3,528 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard - KnowledgeShare</title>
+  <title>Admin Studio & Content Operations - KnowledgeShare</title>
+  <meta name="robots" content="noindex, nofollow">
   <link rel="stylesheet" href="css/styles.css">
   <style>
-    .admin-stats-grid {
+    /* Custom Admin Studio Polish */
+    .admin-stats-ribbon {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px;
-      margin-bottom: 32px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
     }
-    .stat-card {
+    .admin-stat-box {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 20px;
+      padding: 18px 20px;
       box-shadow: var(--shadow-sm);
     }
-    .stat-number {
-      font-size: 32px;
+    .admin-stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+    .admin-stat-value {
+      font-size: 28px;
       font-weight: 700;
       color: var(--text-primary);
-      margin-top: 6px;
     }
-    .admin-table-container {
+    .editor-section-card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 40px;
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 24px;
       box-shadow: var(--shadow-sm);
     }
-    .admin-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-    .admin-table th, .admin-table td {
-      padding: 14px 18px;
-      text-align: left;
-      border-bottom: 1px solid var(--border-color);
-    }
-    .admin-table th {
-      background: var(--bg-secondary);
+    .editor-section-title {
+      font-size: 15px;
       font-weight: 700;
-      font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: var(--text-primary);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
     }
-    .admin-table tr:last-child td {
-      border-bottom: none;
+    .editor-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
     }
-    .action-btn-sm {
-      padding: 5px 12px;
-      font-size: 12px;
-      border-radius: 6px;
+    @media (max-width: 768px) {
+      .editor-grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+    .switch-toggle-label {
+      display: flex;
+      align-items: center;
       cursor: pointer;
-      border: 1px solid var(--border-color);
-      background: var(--bg-primary);
-      color: var(--text-primary);
-      transition: all 0.2s ease;
-      margin-right: 4px;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 14px;
     }
-    .action-btn-danger {
-      background: var(--danger-color);
-      color: #ffffff;
-      border-color: var(--danger-color);
-    }
-    .action-btn-danger:hover {
-      opacity: 0.9;
-    }
-    .role-badge {
-      display: inline-block;
-      padding: 2px 8px;
+    .switch-toggle-input {
+      appearance: none;
+      width: 44px;
+      height: 24px;
+      background: var(--border-color);
       border-radius: 99px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
+      position: relative;
+      outline: none;
+      cursor: pointer;
+      transition: background 0.3s;
     }
-    .role-badge.admin {
-      background: #eff6ff;
-      color: #2563eb;
-      border: 1px solid #bfdbfe;
+    .switch-toggle-input:checked {
+      background: #2563eb;
     }
-    .role-badge.user {
-      background: var(--bg-secondary);
-      color: var(--text-secondary);
-      border: 1px solid var(--border-color);
+    .switch-toggle-input::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: #ffffff;
+      border-radius: 50%;
+      transition: transform 0.3s;
     }
-    .dark-theme .role-badge.admin {
-      background: #1e3a8a;
-      color: #93c5fd;
-      border-color: #1d4ed8;
+    .switch-toggle-input:checked::after {
+      transform: translateX(20px);
     }
   </style>
 </head>
 <body>
 
-  <!-- Universal Navigation Bar -->
-  <header>
-    <div class="navbar">
-      <a href="index.html" class="nav-brand">KnowledgeShare</a>
-      
-      <nav class="nav-streams" id="navStreams">
-        <div class="nav-streams-indicator" id="navStreamsIndicator"></div>
-        <a href="index.html" class="stream-tab" data-stream="All">All</a>
-        <a href="index.html?stream=Technology" class="stream-tab" data-stream="Technology">Technology</a>
-        <a href="index.html?stream=Medical" class="stream-tab" data-stream="Medical">Medical</a>
-        <a href="index.html?stream=Science" class="stream-tab" data-stream="Science">Science</a>
-        <a href="index.html?stream=Entertainment" class="stream-tab" data-stream="Entertainment">Entertainment</a>
-        <a href="index.html?stream=Trending" class="stream-tab" data-stream="Trending">Trending</a>
-        <a href="index.html?stream=Business" class="stream-tab" data-stream="Business">Business</a>
+  <!-- =======================================================
+       GATEKEEPER MASTER PASSKEY MODAL (Unauthenticated State)
+       ======================================================= -->
+  <div class="admin-gatekeeper-backdrop" id="gatekeeperModal" style="display: none;">
+    <div class="admin-gatekeeper-card">
+      <div class="admin-shield-icon">
+        <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+        </svg>
+      </div>
+
+      <span class="role-badge admin" style="margin-bottom: 10px;">Security Shield</span>
+      <h2 class="serif" style="font-size: 24px; margin-bottom: 8px;">Admin Gatekeeper</h2>
+      <p class="text-muted" style="font-size: 13px; line-height: 1.5; margin-bottom: 24px;">
+        Exclusive administrative gateway. Enter your Master Username and Secret Passkey to authenticate.
+      </p>
+
+      <div id="gatekeeperError" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger-color); padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 18px; text-align: left;"></div>
+
+      <form id="gatekeeperForm">
+        <div class="form-group" style="text-align: left;">
+          <label class="form-label" for="gatekeeperUsername">Master Username</label>
+          <input type="text" id="gatekeeperUsername" class="form-input" required placeholder="super_admin" value="super_admin" autocomplete="username">
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label class="form-label" for="gatekeeperPasskey">Secret Passkey</label>
+          <div style="position: relative;">
+            <input type="password" id="gatekeeperPasskey" class="form-input" required placeholder="••••••••••••••••" style="width: 100%; padding-right: 40px;" autocomplete="current-password" autofocus>
+            <button type="button" id="togglePasskeyVisibility" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 14px;">👁️</button>
+          </div>
+        </div>
+
+        <button type="submit" id="gatekeeperSubmitBtn" class="btn btn-primary" style="width: 100%; margin-top: 12px; padding: 12px; font-size: 15px; border-radius: 8px;">
+          Unlock Admin Studio
+        </button>
+      </form>
+
+      <div style="margin-top: 20px; font-size: 12px;">
+        <a href="index.html" class="text-muted" style="text-decoration: underline;">← Return to Public Publication</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- =======================================================
+       ADMIN STUDIO MAIN WORKSPACE (Authenticated State)
+       ======================================================= -->
+  <div id="adminStudioApp" style="display: none;">
+    
+    <!-- Top Administrative Navigation -->
+    <header class="admin-studio-header">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <a href="index.html" class="nav-brand" style="font-size: 20px;">KnowledgeShare</a>
+        <span class="role-badge admin">Studio v2.6</span>
+      </div>
+
+      <!-- Main Navigation Tabs -->
+      <nav class="admin-nav-tabs">
+        <button class="admin-nav-tab active" id="tabArticlesBtn">
+          <span>📑</span> All Articles
+        </button>
+        <button class="admin-nav-tab" id="tabEditorBtn">
+          <span>✍️</span> Studio Editor
+        </button>
       </nav>
 
-      <div class="nav-links">
-        <a href="create.html" class="nav-link" id="writeLink">Write</a>
-        <div id="authArea"></div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button id="btnHeaderNewPost" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
+          + New Article
+        </button>
+        <a href="index.html" target="_blank" class="btn btn-secondary" style="padding: 8px 14px; font-size: 13px;" title="View Live Blog">
+          Live Site ↗
+        </a>
+        <button id="adminThemeToggle" class="theme-toggle-btn" title="Toggle Theme">
+          <svg class="sun-icon" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.01c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/></svg>
+          <svg class="moon-icon" viewBox="0 0 24 24"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10 0-4.8 3.5-8.9 8.2-9.8.6-.1 1.2.3 1.3.9.1.6-.2 1.2-.8 1.4-3.5 1.3-5.8 4.7-5.8 8.5 0 4.7 3.9 8.5 8.7 8.5 2.5 0 4.8-1.1 6.3-2.9.4-.5 1-.6 1.5-.3.5.3.7.9.5 1.4-1.7 3.8-5.5 6.3-9.8 6.3z"/></svg>
+        </button>
+        <button id="adminSignOutBtn" class="btn btn-secondary" style="padding: 8px 14px; font-size: 13px; color: var(--danger-color); border-color: var(--border-color);">
+          Sign Out
+        </button>
+      </div>
+    </header>
+
+    <main style="max-width: var(--max-width-layout); margin: 32px auto; padding: 0 24px;">
+
+      <!-- =======================================================
+           VIEW 1: POST MANAGEMENT DASHBOARD
+           ======================================================= -->
+      <section id="viewArticlesDashboard">
+        
+        <!-- Stats Ribbon -->
+        <div class="admin-stats-ribbon">
+          <div class="admin-stat-box">
+            <div class="admin-stat-label">Published Articles</div>
+            <div class="admin-stat-value" id="statArticlesCount">-</div>
+          </div>
+          <div class="admin-stat-box">
+            <div class="admin-stat-label">Monetized / Affiliate Deals</div>
+            <div class="admin-stat-value" id="statMonetizedCount" style="color: #10b981;">-</div>
+          </div>
+          <div class="admin-stat-box">
+            <div class="admin-stat-label">Reader Appreciations</div>
+            <div class="admin-stat-value" id="statLikesCount" style="color: #ec4899;">-</div>
+          </div>
+          <div class="admin-stat-box">
+            <div class="admin-stat-label">Active Editorial Streams</div>
+            <div class="admin-stat-value" id="statStreamsCount">6 Active</div>
+          </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="admin-filter-bar">
+          <input type="text" id="articleSearchInput" class="admin-search-input" placeholder="🔍 Search articles by title or keyword...">
+          
+          <select id="filterStreamSelect" class="admin-select-filter">
+            <option value="All">All Streams</option>
+            <option value="Technology">Technology</option>
+            <option value="Medical">Medical</option>
+            <option value="Science">Science</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Trending">Trending</option>
+            <option value="Business">Business</option>
+          </select>
+
+          <select id="filterAffiliateSelect" class="admin-select-filter">
+            <option value="All">All Monetization</option>
+            <option value="affiliate">Affiliate Active (CTA)</option>
+            <option value="standard">Standard Editorial</option>
+          </select>
+        </div>
+
+        <!-- Table Container -->
+        <div class="admin-table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width: 70px;">Media</th>
+                <th>Title & Story Overview</th>
+                <th style="width: 120px;">Stream</th>
+                <th style="width: 130px;">Publish Date</th>
+                <th style="width: 140px;">Affiliate Status</th>
+                <th style="width: 180px; text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminArticlesTbody">
+              <tr>
+                <td colspan="6" class="text-muted text-center" style="padding: 40px;">
+                  Loading article registry...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- =======================================================
+           VIEW 2: PROFESSIONAL-GRADE BLOG EDITOR FORM
+           ======================================================= -->
+      <section id="viewBlogEditor" style="display: none;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <div>
+            <span class="role-badge admin" id="editorModeBadge">Creating New Article</span>
+            <h1 class="serif" id="editorHeadingText" style="font-size: 28px; margin-top: 6px;">Editorial Publishing Canvas</h1>
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <button type="button" id="btnCancelEditor" class="btn btn-secondary">
+              Back to Articles
+            </button>
+            <button type="button" id="btnSaveArticle" class="btn btn-primary" style="padding: 10px 24px; font-weight: 600;">
+              Publish Article
+            </button>
+          </div>
+        </div>
+
+        <!-- Hidden ID for Editing Mode -->
+        <input type="hidden" id="editArticleId" value="">
+
+        <!-- SECTION 1: METADATA & SEO -->
+        <div class="editor-section-card">
+          <div class="editor-section-title">
+            <span>📌</span> 1. Article Metadata & SEO
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="formTitle">Article Title *</label>
+            <input type="text" id="formTitle" class="form-input serif" style="font-size: 18px; font-weight: 600;" placeholder="e.g. Next-Gen Gaming Laptops of 2026: Elite Performance Benchmarked" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="formSummary">Summary / Meta Description</label>
+            <textarea id="formSummary" class="form-input" style="height: 70px; resize: vertical;" placeholder="A compelling 1-2 sentence executive synopsis for search engines and social shares..."></textarea>
+          </div>
+
+          <div class="editor-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="formStream">Stream Category *</label>
+              <select id="formStream" class="form-input" style="cursor: pointer;">
+                <option value="Technology">Technology</option>
+                <option value="Medical">Medical</option>
+                <option value="Science">Science</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Trending">Trending</option>
+                <option value="Business">Business</option>
+              </select>
+            </div>
+
+            <div class="editor-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="formAuthor">Author Byline</label>
+                <input type="text" id="formAuthor" class="form-input" value="Super Admin" placeholder="Super Admin">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="formReadTime">Estimated Read Time</label>
+                <input type="text" id="formReadTime" class="form-input" value="8 min read" placeholder="8 min read">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: MEDIA & VISUALS -->
+        <div class="editor-section-card">
+          <div class="editor-section-title">
+            <span>🖼️</span> 2. Media & Visual Cover Presentation
+          </div>
+
+          <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+            <label style="font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <input type="radio" name="mediaSource" id="mediaSourceFile" value="file" checked> Local File Upload (Multer)
+            </label>
+            <label style="font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+              <input type="radio" name="mediaSource" id="mediaSourceUrl" value="url"> External Image URL
+            </label>
+          </div>
+
+          <div class="editor-grid-2" style="align-items: start;">
+            <div>
+              <!-- Local File Upload Field -->
+              <div id="fileUploadContainer">
+                <div class="upload-panel" id="adminUploadPanel" style="cursor: pointer; padding: 28px; border: 2px dashed var(--border-color); border-radius: 12px; text-align: center; background: var(--bg-secondary);">
+                  <div class="placeholder-text">
+                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin: 0 auto 6px auto; color: #2563eb;">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <span style="font-weight: 600; font-size: 13px;">Click to select or drag & drop cover image</span>
+                    <span class="text-muted" style="font-size: 11px;">Supports JPEG, PNG, WEBP, SVG (Max 10MB)</span>
+                  </div>
+                  <input type="file" id="formCoverFile" accept="image/*" style="display: none;">
+                </div>
+              </div>
+
+              <!-- External URL Field -->
+              <div id="urlUploadContainer" style="display: none;">
+                <div class="form-group">
+                  <label class="form-label" for="formCoverUrl">Direct Image URL</label>
+                  <input type="url" id="formCoverUrl" class="form-input" placeholder="https://images.unsplash.com/photo-...">
+                </div>
+              </div>
+            </div>
+
+            <!-- Active Card Preview with Fallback -->
+            <div>
+              <div class="form-label" style="margin-bottom: 8px;">Cover Preview with Active Fallback</div>
+              <div id="coverPreviewContainer" style="height: 140px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border-color); background: var(--bg-secondary); position: relative;">
+                <img id="coverPreviewImg" src="" alt="Cover Preview" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                <div id="coverFallbackCard" class="fallback-image-card" style="height: 100%;">
+                  <span id="coverFallbackStreamText">TECHNOLOGY</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 3: MONETIZATION ATTRIBUTES -->
+        <div class="editor-section-card">
+          <div class="editor-section-title">
+            <span>💰</span> 3. Monetization & High-Yield Affiliate Attributes
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <label class="switch-toggle-label">
+              <input type="checkbox" id="formAffiliateToggle" class="switch-toggle-input" checked>
+              <span>Enable Primary Affiliate Call-to-Action (CTA) Box</span>
+            </label>
+          </div>
+
+          <div id="affiliateFieldsArea" class="editor-grid-2">
+            <div class="form-group">
+              <label class="form-label" for="formCtaText">Custom Button Label</label>
+              <input type="text" id="formCtaText" class="form-input" value="Check Latest Price on Amazon" placeholder="e.g. Check Latest Price on Amazon">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="formCtaUrl">Target Affiliate / Partner URL</label>
+              <input type="url" id="formCtaUrl" class="form-input" placeholder="https://amzn.to/3example">
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 4: DEDICATED STRUCTURED PROS & CONS -->
+        <div class="editor-section-card">
+          <div class="editor-section-title">
+            <span>⚖️</span> 4. Structured Pros & Cons Matrix (Clean JSON Arrays)
+          </div>
+          <p class="text-muted" style="font-size: 13px; margin-bottom: 16px;">
+            Items entered here are stored as clean JSON arrays and rendered into checkmark/cross visual cards. They never leak raw HTML tags.
+          </p>
+
+          <div class="pros-cons-builder-grid">
+            <!-- Pros Column -->
+            <div class="builder-column pros-col">
+              <div class="builder-header" style="color: #10b981;">
+                <span>✓</span> Key Advantages (Pros)
+              </div>
+              <div class="builder-items-list" id="prosListContainer">
+                <!-- Dynamically rendered -->
+              </div>
+              <div class="builder-add-row">
+                <input type="text" id="proInput" placeholder="Add an advantage and press Enter...">
+                <button type="button" id="btnAddPro" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">+ Add</button>
+              </div>
+            </div>
+
+            <!-- Cons Column -->
+            <div class="builder-column cons-col">
+              <div class="builder-header" style="color: #ef4444;">
+                <span>✕</span> Key Considerations (Cons)
+              </div>
+              <div class="builder-items-list" id="consListContainer">
+                <!-- Dynamically rendered -->
+              </div>
+              <div class="builder-add-row">
+                <input type="text" id="conInput" placeholder="Add a consideration and press Enter...">
+                <button type="button" id="btnAddCon" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 5: CONTENT BODY & REAL-TIME PREVIEW -->
+        <div class="editor-section-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+            <div class="editor-section-title" style="border: none; padding: 0; margin: 0;">
+              <span>📝</span> 5. Article Content & Live Preview
+            </div>
+
+            <!-- Layout Tabs -->
+            <div class="editor-tabs-bar" style="margin: 0;">
+              <button type="button" class="editor-tab-btn" id="btnViewEdit">Edit Canvas</button>
+              <button type="button" class="editor-tab-btn active" id="btnViewSplit">Split View</button>
+              <button type="button" class="editor-tab-btn" id="btnViewPreview">Live Reader Preview</button>
+            </div>
+          </div>
+
+          <!-- Formatting Toolbar -->
+          <div class="editor-toolbar" style="top: 70px;">
+            <button type="button" class="btn btn-text" onclick="insertAdminMD('## ', '')" title="H2 Heading"><b>H2</b></button>
+            <button type="button" class="btn btn-text" onclick="insertAdminMD('### ', '')" title="H3 Heading"><b>H3</b></button>
+            <button type="button" class="btn btn-text" onclick="insertAdminMD('**', '**')" title="Bold"><b>B</b></button>
+            <button type="button" class="btn btn-text" onclick="insertAdminMD('*', '*')" title="Italic"><i>I</i></button>
+            <button type="button" class="btn btn-text" onclick="insertAdminMD('> ', '')" title="Blockquote"><b>“</b></button>
+            <button type="button" class="btn btn-text" onclick="insertAdminMD('* ', '')" title="Bullet List">• List</button>
+            <button type="button" class="btn btn-text" onclick="insertAdminMD('1. ', '')" title="Numbered List">1. List</button>
+            <button type="button" class="btn btn-text" onclick="insertAdminMD('```\n', '\n```')" title="Code Block"><code>&lt;/&gt;</code></button>
+            <button type="button" class="btn btn-text" onclick="insertAdminLink()" title="Hyperlink">🔗</button>
+            <button type="button" class="btn btn-text" onclick="insertAdminTable()" title="Markdown Table">📊 Table</button>
+            <button type="button" class="btn btn-text" onclick="insertAdminCtaBox()" title="Affiliate CTA Box Shortcode" style="color: #2563eb; font-weight: 600;">+ CTA Box</button>
+          </div>
+
+          <!-- Canvas / Split Workspace -->
+          <div class="creator-layout split-mode" id="adminEditorLayout" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <!-- Write Pane -->
+            <div id="adminWritePane">
+              <textarea id="formContent" class="editor-content-area serif" style="height: 520px;" placeholder="Compose in Markdown..."></textarea>
+            </div>
+
+            <!-- Live Preview Pane -->
+            <div class="preview-pane" id="adminPreviewPane" style="height: 520px; overflow-y: auto;">
+              <div class="article-header">
+                <span class="badge" id="previewBadge">Technology</span>
+                <span id="previewReadTime" style="margin-left: 8px; font-size: 13px; color: var(--text-secondary);">• 8 min read</span>
+                <h1 class="article-title serif" id="previewTitle" style="margin-top: 12px; font-size: 26px;">Article Title Preview</h1>
+                <p id="previewSummary" style="font-size: 14px; font-style: italic; color: var(--text-secondary); margin: 10px 0;"></p>
+              </div>
+
+              <!-- Cover Image in Preview -->
+              <img id="previewCoverImg" src="" alt="Cover" style="width: 100%; max-height: 240px; object-fit: cover; border-radius: 8px; margin-bottom: 20px; display: none;">
+
+              <!-- Live Parsed Content -->
+              <div class="article-content serif" id="previewBody"></div>
+
+              <!-- Live Pros & Cons Preview -->
+              <div id="previewProsConsContainer"></div>
+
+              <!-- Live CTA Preview -->
+              <div id="previewCtaContainer"></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- =======================================================
+       CONFIRMATION MODAL FOR ARTICLE DELETION
+       ======================================================= -->
+  <div class="admin-dialog-backdrop" id="deleteConfirmModal" style="display: none;">
+    <div class="admin-dialog-box">
+      <h3 class="serif" style="font-size: 20px; color: var(--danger-color); margin-bottom: 12px;">Delete Article Permanently?</h3>
+      <p class="text-muted" style="font-size: 14px; line-height: 1.5; margin-bottom: 20px;">
+        Are you sure you want to permanently delete <strong id="deleteTargetTitle" style="color: var(--text-primary);">this post</strong>? All database records, associated likes, and orphaned local cover image assets will be permanently removed.
+      </p>
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <button type="button" id="btnCancelDelete" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="btnConfirmDelete" class="btn btn-primary action-btn-danger">Confirm Delete</button>
       </div>
     </div>
-  </header>
-
-  <main style="max-width: var(--max-width-layout); margin: 40px auto; padding: 0 24px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px;">
-      <div>
-        <span class="role-badge admin" style="margin-bottom: 8px;">Super Admin Control Panel</span>
-        <h1 class="serif" style="font-size: 32px;">Platform Management Dashboard</h1>
-      </div>
-      <a href="create.html" class="btn btn-primary">+ Create New Article</a>
-    </div>
-
-    <!-- Platform Stats -->
-    <div class="admin-stats-grid">
-      <div class="stat-card">
-        <div class="text-muted" style="font-size: 13px; font-weight: 600;">Total Published Articles</div>
-        <div class="stat-number" id="statTotalBlogs">-</div>
-      </div>
-      <div class="stat-card">
-        <div class="text-muted" style="font-size: 13px; font-weight: 600;">Registered User Accounts</div>
-        <div class="stat-number" id="statTotalUsers">-</div>
-      </div>
-      <div class="stat-card">
-        <div class="text-muted" style="font-size: 13px; font-weight: 600;">System Access Privileges</div>
-        <div class="stat-number" style="font-size: 20px; color: #2563eb;">Full Admin Access</div>
-      </div>
-    </div>
-
-    <!-- All Articles Section -->
-    <section style="margin-bottom: 48px;">
-      <h3 class="serif" style="font-size: 20px; margin-bottom: 16px;">Article Directory & Content Moderation</h3>
-      <div class="admin-table-container">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Article Title</th>
-              <th>Stream</th>
-              <th>Author</th>
-              <th>Likes</th>
-              <th>Read Time</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="adminBlogsTbody">
-            <tr><td colspan="7" class="text-muted text-center" style="padding: 30px;">Loading articles...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- User Management Section -->
-    <section>
-      <h3 class="serif" style="font-size: 20px; margin-bottom: 16px;">User Account Management</h3>
-      <div class="admin-table-container">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>User ID</th>
-              <th>Username</th>
-              <th>Email Address</th>
-              <th>Role</th>
-              <th>Articles Authored</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="adminUsersTbody">
-            <tr><td colspan="6" class="text-muted text-center" style="padding: 30px;">Loading user directory...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+  </div>
 
   <div id="toastNotification" class="toast"></div>
 
