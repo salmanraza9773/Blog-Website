@@ -72,9 +72,9 @@ async function handleGatekeeperLogin(e) {
   const username = usernameInput ? usernameInput.value.trim() : '';
   const passkey = passkeyInput ? passkeyInput.value.trim() : '';
 
-  if (!username || !passkey) {
+  if (!passkey) {
     if (errorBox) {
-      errorBox.innerText = 'Username and Master Passkey are required.';
+      errorBox.innerText = 'Secret Passkey is required to access Admin Studio.';
       errorBox.style.display = 'block';
     }
     return;
@@ -90,7 +90,7 @@ async function handleGatekeeperLogin(e) {
     const res = await fetch('/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, passkey })
+      body: JSON.stringify({ username: username || undefined, passkey })
     });
 
     const data = await res.json();
@@ -971,23 +971,6 @@ function initAdminStudio() {
 window.addEventListener('DOMContentLoaded', async () => {
   // Gatekeeper Form
   document.getElementById('gatekeeperForm')?.addEventListener('submit', handleGatekeeperLogin);
-
-  // Auto-fill passkey helper
-  document.getElementById('btnAutoFillPasskey')?.addEventListener('click', () => {
-    const userField = document.getElementById('gatekeeperUsername');
-    const passField = document.getElementById('gatekeeperPasskey');
-    if (userField) userField.value = 'super_admin';
-    if (passField) passField.value = 'AdminMasterKey_2026!';
-    document.getElementById('gatekeeperForm')?.dispatchEvent(new Event('submit', { cancelable: true }));
-  });
-
-  // Toggle passkey visibility
-  document.getElementById('togglePasskeyVisibility')?.addEventListener('click', () => {
-    const passInput = document.getElementById('gatekeeperPasskey');
-    if (passInput) {
-      passInput.type = passInput.type === 'password' ? 'text' : 'password';
-    }
-  });
 
   // Verify session
   const isAuth = await verifyAdminSession();

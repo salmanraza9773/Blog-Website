@@ -202,6 +202,73 @@ async function runTests() {
     assert.strictEqual(resMockData && resMockData.status, 'ok', 'Health endpoint should return status: ok');
   });
 
+  // TEST 9: Admin Gatekeeper Public Security Audit (no secrets, passkeys, or auto-fill buttons exposed)
+  test('Admin Gatekeeper does not expose passkey or auto-fill options in public files', () => {
+    const publicDir = path.join(__dirname, '../public');
+    function scanDir(dir) {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        const fullPath = path.join(dir, file);
+        if (fs.statSync(fullPath).isDirectory()) {
+          scanDir(fullPath);
+        } else if (file.endsWith('.html') || file.endsWith('.js')) {
+          const content = fs.readFileSync(fullPath, 'utf8');
+          assert(!content.includes('AdminMasterKey_2026!'), `Secret passkey found in public file ${file}!`);
+          assert(!content.includes('btnAutoFillPasskey'), `Auto-fill passkey button found in public file ${file}!`);
+          assert(!content.includes('Auto-Fill'), `Auto-Fill text found in public file ${file}!`);
+        }
+      }
+    }
+    scanDir(publicDir);
+  });
+
+  // TEST 10: Admin Gatekeeper API Security
+  await asyncTest('Admin login requires valid passkey and rejects unauthorized attempts', async () => {
+    const app = require('../server/app.js');
+
+    async function makePostRequest(url, body) {
+      let resStatus = 200;
+      let resData = null;
+      await new Promise((resolve) => {
+        const reqMock = {
+          method: 'POST',
+          url,
+          headers: { 'content-type': 'application/json' },
+          body
+        };
+        const resMock = {
+          status(code) {
+            resStatus = code;
+            return this;
+          },
+          json(data) {
+            resData = data;
+            resolve();
+          },
+          setHeader() {},
+          end() { resolve(); }
+        };
+        app.handle(reqMock, resMock, () => resolve());
+      });
+      return { status: resStatus, data: resData };
+    }
+
+    // 1. Missing passkey must be rejected with 400
+    const emptyRes = await makePostRequest('/api/admin/login', {});
+    assert.strictEqual(emptyRes.status, 400, 'Login without passkey must return 400');
+
+    // 2. Invalid passkey must be rejected with 401
+    const invalidRes = await makePostRequest('/api/admin/login', { passkey: 'WrongSecretKey_123!' });
+    assert.strictEqual(invalidRes.status, 401, 'Login with incorrect passkey must return 401');
+
+    // 3. Valid master passkey alone must succeed with 200 and return super_admin token
+    const validKey = process.env.ADMIN_SECRET_KEY || 'AdminMasterKey_2026!';
+    const validRes = await makePostRequest('/api/admin/login', { passkey: validKey });
+    assert.strictEqual(validRes.status, 200, 'Login with valid passkey must return 200');
+    assert(validRes.data && validRes.data.token, 'Response must include JWT session token');
+    assert.strictEqual(validRes.data.user.role, 'super_admin', 'User must have super_admin role');
+  });
+
   console.log('\n====================================================');
   console.log(`TEST SUMMARY: ${passed}/${total} passed (${Math.round((passed/total)*100)}%)`);
   console.log('====================================================\n');

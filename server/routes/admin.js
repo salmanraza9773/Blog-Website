@@ -87,30 +87,52 @@ function normalizeJsonArray(val) {
 router.post('/login', async (req, res) => {
   const { username, passkey } = req.body;
 
-  if (!username || !passkey) {
-    return res.status(400).json({ error: 'Username and Master Passkey are required.' });
+  if (!passkey || typeof passkey !== 'string' || !passkey.trim()) {
+    return res.status(400).json({ error: 'Secret Passkey is required.' });
   }
 
   const masterUsername = process.env.ADMIN_USERNAME || 'super_admin';
   const masterSecretKey = process.env.ADMIN_SECRET_KEY || 'AdminMasterKey_2026!';
 
-  const isMasterUsername = (username.trim() === masterUsername || username.trim() === 'super_admin' || username.trim() === 'admin');
-  const isMasterKey = (passkey.trim() === masterSecretKey);
+  const trimmedPasskey = passkey.trim();
+  const trimmedUsername = (username && typeof username === 'string') ? username.trim() : '';
 
-  let verified = isMasterUsername && isMasterKey;
+  // 1. Direct Master Passkey Verification
+  let verified = (trimmedPasskey === masterSecretKey);
   let adminId = 1;
   let adminName = masterUsername;
 
-  // Fallback to database user verification if not using master passkey
-  if (!verified) {
+  // If a specific username was provided alongside master key, associate it appropriately
+  if (verified && trimmedUsername) {
+    if (trimmedUsername === masterUsername || trimmedUsername === 'super_admin' || trimmedUsername === 'admin') {
+      adminName = trimmedUsername;
+    } else {
+      try {
+        const db = getDB();
+        const user = await db.get(
+          "SELECT id, username, role FROM users WHERE (username = ? OR email = ?) AND (role = 'admin' OR role = 'super_admin')",
+          [trimmedUsername, trimmedUsername]
+        );
+        if (user) {
+          adminId = user.id;
+          adminName = user.username;
+        }
+      } catch (err) {
+        console.warn('DB user lookup error:', err.message);
+      }
+    }
+  }
+
+  // 2. Fallback to database user verification if not using master passkey
+  if (!verified && trimmedUsername) {
     try {
       const db = getDB();
       const user = await db.get(
         "SELECT * FROM users WHERE (username = ? OR email = ?) AND (role = 'admin' OR role = 'super_admin')",
-        [username.trim(), username.trim()]
+        [trimmedUsername, trimmedUsername]
       );
       if (user) {
-        const matches = await bcrypt.compare(passkey.trim(), user.password_hash);
+        const matches = await bcrypt.compare(trimmedPasskey, user.password_hash);
         if (matches) {
           verified = true;
           adminId = user.id;
