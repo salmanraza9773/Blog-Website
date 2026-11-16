@@ -229,7 +229,8 @@ router.post('/blogs', requireAdminAuth, upload.single('cover_image'), async (req
       primary_cta_url,
       pros_json,
       cons_json,
-      cover_image_url
+      cover_image_url,
+      cover_image_path
     } = req.body;
 
     if (!title || !title.trim()) {
@@ -242,12 +243,14 @@ router.post('/blogs', requireAdminAuth, upload.single('cover_image'), async (req
       return res.status(400).json({ error: 'Stream category is required.' });
     }
 
-    // Determine cover image path
+    // Determine cover image path: supports multer file upload or direct external image URLs (e.g., Unsplash, Cloudinary)
     let coverImagePath = null;
     if (req.file) {
       coverImagePath = `/uploads/${req.file.filename}`;
     } else if (cover_image_url && cover_image_url.trim()) {
       coverImagePath = cover_image_url.trim();
+    } else if (cover_image_path && cover_image_path.trim()) {
+      coverImagePath = cover_image_path.trim();
     }
 
     // Normalize values
@@ -319,7 +322,8 @@ router.put('/blogs/:id', requireAdminAuth, upload.single('cover_image'), async (
       primary_cta_url,
       pros_json,
       cons_json,
-      cover_image_url
+      cover_image_url,
+      cover_image_path
     } = req.body;
 
     let coverImagePath = existing.cover_image_path;
@@ -335,6 +339,11 @@ router.put('/blogs/:id', requireAdminAuth, upload.single('cover_image'), async (
         removeLocalImage(existing.cover_image_path);
       }
       coverImagePath = cover_image_url.trim();
+    } else if (cover_image_path !== undefined && cover_image_path.trim()) {
+      if (existing.cover_image_path && existing.cover_image_path.startsWith('/uploads/')) {
+        removeLocalImage(existing.cover_image_path);
+      }
+      coverImagePath = cover_image_path.trim();
     }
 
     const cleanTitle = title !== undefined ? title.trim() : existing.title;

@@ -119,9 +119,9 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new blog (Requires Auth and File Upload)
+// Create new blog (Requires Auth and File Upload OR Direct External URL)
 router.post('/', authenticateToken, upload.single('cover_image'), async (req, res) => {
-  const { title, content, stream } = req.body;
+  const { title, content, stream, cover_image_url, cover_image_path } = req.body;
   if (!title || !content || !stream) {
     return res.status(400).json({ error: 'Title, content, and stream are required' });
   }
@@ -131,13 +131,21 @@ router.post('/', authenticateToken, upload.single('cover_image'), async (req, re
     return res.status(400).json({ error: `Invalid stream. Must be one of: ${allowedStreams.join(', ')}` });
   }
 
-  const coverImagePath = req.file ? `/uploads/${req.file.filename}` : null;
+  // Support direct external image URLs (e.g., Unsplash, Cloudinary) as well as file uploads
+  let finalCoverImage = null;
+  if (req.file) {
+    finalCoverImage = `/uploads/${req.file.filename}`;
+  } else if (cover_image_url && typeof cover_image_url === 'string' && cover_image_url.trim()) {
+    finalCoverImage = cover_image_url.trim();
+  } else if (cover_image_path && typeof cover_image_path === 'string' && cover_image_path.trim()) {
+    finalCoverImage = cover_image_path.trim();
+  }
 
   try {
     const db = getDB();
     const result = await db.run(
       'INSERT INTO blogs (title, content, cover_image_path, stream, author_id) VALUES (?, ?, ?, ?, ?)',
-      [title, content, coverImagePath, stream, req.user.id]
+      [title, content, finalCoverImage, stream, req.user.id]
     );
 
     const blogId = result.lastID;
@@ -225,7 +233,7 @@ router.get('/:id/related', async (req, res) => {
 // Update blog (Author or Admin)
 router.put('/:id', authenticateToken, upload.single('cover_image'), async (req, res) => {
   const { id } = req.params;
-  const { title, content, stream, summary, estimated_read_time, primary_cta_text, primary_cta_url } = req.body;
+  const { title, content, stream, summary, estimated_read_time, primary_cta_text, primary_cta_url, cover_image_url, cover_image_path } = req.body;
 
   try {
     const db = getDB();
@@ -234,12 +242,20 @@ router.put('/:id', authenticateToken, upload.single('cover_image'), async (req, 
       return res.status(404).json({ error: 'Blog not found' });
     }
 
-    // Check authorization: Must be author OR admin
-    if (req.user.role !== 'admin' && blog.author_id !== req.user.id) {
+    // Check authorization: Must be author OR admin/super_admin
+    if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && blog.author_id !== req.user.id) {
       return res.status(403).json({ error: 'Access denied. You can only edit your own blogs.' });
     }
 
-    const coverImagePath = req.file ? `/uploads/${req.file.filename}` : blog.cover_image_path;
+    let finalCoverImage = blog.cover_image_path;
+    if (req.file) {
+      finalCoverImage = `/uploads/${req.file.filename}`;
+    } else if (cover_image_url !== undefined && typeof cover_image_url === 'string' && cover_image_url.trim()) {
+      finalCoverImage = cover_image_url.trim();
+    } else if (cover_image_path !== undefined && typeof cover_image_path === 'string' && cover_image_path.trim()) {
+      finalCoverImage = cover_image_path.trim();
+    }
+
     const newTitle = title || blog.title;
     const newContent = content || blog.content;
     const newStream = stream || blog.stream;
@@ -253,7 +269,7 @@ router.put('/:id', authenticateToken, upload.single('cover_image'), async (req, 
         title = ?, content = ?, stream = ?, summary = ?, 
         estimated_read_time = ?, primary_cta_text = ?, primary_cta_url = ?, cover_image_path = ?
        WHERE id = ?`,
-      [newTitle, newContent, newStream, newSummary, newReadTime, newCtaText, newCtaUrl, coverImagePath, id]
+      [newTitle, newContent, newStream, newSummary, newReadTime, newCtaText, newCtaUrl, finalCoverImage, id]
     );
 
     res.json({ message: 'Blog updated successfully' });

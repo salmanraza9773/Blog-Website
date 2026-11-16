@@ -1,4 +1,4 @@
-const API_URL = ''; // Same origin
+﻿const API_URL = ''; // Same origin
 
 // Toast notifications helper
 function showToast(message, type = 'success') {
@@ -399,7 +399,7 @@ function initHeader() {
           removeToken();
           showToast('Signed out of Admin Studio.');
           setTimeout(() => {
-            window.location.href = 'index.html';
+            window.location.href = '/index.html';
           }, 800);
         });
       }

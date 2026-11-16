@@ -1,4 +1,4 @@
-// Helper to get query parameters
+﻿// Helper to get query parameters
 function getQueryParam(name) {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get(name);
@@ -430,6 +430,6 @@ window.addEventListener('DOMContentLoaded', () => {
   if (blogId) {
     loadBlogDetails(blogId);
   } else {
-    window.location.href = 'index.html';
+    window.location.href = '/index.html';
   }
 });

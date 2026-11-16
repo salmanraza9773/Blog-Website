@@ -1,4 +1,4 @@
-function getQueryParam(name) {
+﻿function getQueryParam(name) {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get(name);
 }
@@ -9,7 +9,7 @@ const resetForm = document.getElementById('resetForm');
 if (!token) {
   showToast('Invalid or missing password reset token.', 'error');
   setTimeout(() => {
-    window.location.href = 'auth.html';
+    window.location.href = '/auth.html';
   }, 2000);
 }
 
@@ -37,7 +37,7 @@ if (resetForm) {
       showToast(data.message || 'Password reset successful!');
       
       setTimeout(() => {
-        window.location.href = 'auth.html';
+        window.location.href = '/auth.html';
       }, 1500);
 
     } catch (err) {

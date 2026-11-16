@@ -1,9 +1,9 @@
-// Protect page route: redirect if not logged in
+﻿// Protect page route: redirect if not logged in
 const user = getUser();
 if (!user) {
   showToast('You must sign in to view the dashboard.', 'error');
   setTimeout(() => {
-    window.location.href = 'auth.html';
+    window.location.href = '/auth.html';
   }, 1000);
 }
 

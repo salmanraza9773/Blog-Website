@@ -1,6 +1,6 @@
-// Check if user is already authenticated
+﻿// Check if user is already authenticated
 if (getUser()) {
-  window.location.href = 'index.html';
+  window.location.href = '/index.html';
 }
 
 const loginTabBtn = document.getElementById('loginTabBtn');
@@ -114,7 +114,7 @@ if (signupForm) {
       showToast('Account created successfully! Welcome.');
       
       setTimeout(() => {
-        window.location.href = 'index.html';
+        window.location.href = '/index.html';
       }, 1200);
 
     } catch (err) {

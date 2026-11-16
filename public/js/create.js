@@ -3,7 +3,7 @@ const user = getUser();
 if (!user) {
   showToast('You must sign in to create or edit a story.', 'error');
   setTimeout(() => {
-    window.location.href = 'auth.html';
+    window.location.href = '/auth.html';
   }, 1000);
 }
 
@@ -296,7 +296,7 @@ if (publishBtn) {
       showToast(editBlogId ? 'Story updated successfully!' : 'Story published successfully!');
       const targetId = editBlogId || data.blogId;
       setTimeout(() => {
-        window.location.href = `blog.html?id=${targetId}`;
+        window.location.href = `/blog.html?id=${targetId}`;
       }, 1200);
 
     } catch (err) {

@@ -105,7 +105,7 @@ async function loadBlogs(stream) {
       `;
 
       card.addEventListener('click', () => {
-        window.location.href = `blog.html?id=${blog.id}`;
+        window.location.href = `/blog.html?id=${blog.id}`;
       });
 
       blogList.appendChild(card);

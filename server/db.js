@@ -5,6 +5,57 @@ const fs = require('fs');
 let db = null;
 let dbInitPromise = null;
 
+/**
+ * Reads database connection details from environment variables.
+ * Supports remote connection strings (PostgreSQL, MySQL, remote HTTP snapshots, LibSQL)
+ * with graceful fallback to local SQLite storage.
+ */
+function getDbConfig() {
+  const connectionString = (
+    process.env.DATABASE_URL ||
+    process.env.DB_CONNECTION_STRING ||
+    process.env.DB_URL ||
+    ''
+  ).trim();
+
+  const customPath = (
+    process.env.DATABASE_PATH ||
+    process.env.DB_PATH ||
+    ''
+  ).trim();
+
+  const isRemote = Boolean(
+    connectionString && (
+      connectionString.startsWith('postgres://') ||
+      connectionString.startsWith('postgresql://') ||
+      connectionString.startsWith('mysql://') ||
+      connectionString.startsWith('http://') ||
+      connectionString.startsWith('https://') ||
+      connectionString.startsWith('libsql://')
+    )
+  );
+
+  let targetType = 'local_sqlite';
+  if (isRemote) {
+    if (connectionString.startsWith('postgres')) targetType = 'postgres';
+    else if (connectionString.startsWith('mysql')) targetType = 'mysql';
+    else if (connectionString.startsWith('http')) targetType = 'remote_http';
+    else targetType = 'remote_generic';
+  } else if (customPath) {
+    targetType = 'custom_path';
+  }
+
+  const localPath = customPath || (process.env.VERCEL ? path.join('/tmp', 'blog.db') : path.join(__dirname, 'blog.db'));
+
+  return {
+    connectionString,
+    customPath,
+    isRemote,
+    targetType,
+    localPath
+  };
+}
+
 class SqlJsWrapper {
   constructor(sqlDb, persistPath) {
     this.sqlDb = sqlDb;
@@ -82,6 +133,79 @@ async function initDB() {
   if (dbInitPromise) return dbInitPromise;
 
   dbInitPromise = (async () => {
+    const config = getDbConfig();
+    console.log(`[Database] Configuration switch active: mode = ${config.isRemote ? 'REMOTE (' + config.targetType + ')' : 'LOCAL_SQLITE'}`);
+
+    // If a remote HTTP/HTTPS connection string is provided, attempt to fetch the remote database snapshot
+    let remoteBuffer = null;
+    if (config.targetType === 'remote_http') {
+      try {
+        console.log(`[Database] Attempting to retrieve remote database snapshot from ${config.connectionString}...`);
+        const res = await fetch(config.connectionString);
+        if (res.ok) {
+          const arr = await res.arrayBuffer();
+          remoteBuffer = Buffer.from(arr);
+          console.log('[Database] Remote snapshot retrieved successfully.');
+        } else {
+          console.warn(`[Database] Remote HTTP returned status ${res.status}. Falling back to local storage.`);
+        }
+      } catch (httpErr) {
+        console.warn('[Database] Remote database fetch error:', httpErr.message, 'Falling back to local storage.');
+      }
+    }
+
+    // If PostgreSQL remote connection string is provided and pg is available
+    if (config.targetType === 'postgres') {
+      try {
+        const { Pool } = require('pg');
+        const pool = new Pool({
+          connectionString: config.connectionString,
+          ssl: process.env.DB_SSL === 'false' ? false : { rejectUnauthorized: false }
+        });
+        const client = await pool.connect();
+        client.release();
+        console.log('[Database] Successfully connected to remote PostgreSQL database.');
+
+        class PostgresWrapper {
+          constructor(p) {
+            this.pool = p;
+          }
+          async get(sql, params = []) {
+            let idx = 1;
+            const pgSql = sql.replace(/\?/g, () => `$${idx++}`);
+            const res = await this.pool.query(pgSql, params);
+            return res.rows[0];
+          }
+          async all(sql, params = []) {
+            let idx = 1;
+            const pgSql = sql.replace(/\?/g, () => `$${idx++}`);
+            const res = await this.pool.query(pgSql, params);
+            return res.rows;
+          }
+          async run(sql, params = []) {
+            let idx = 1;
+            const pgSql = sql.replace(/\?/g, () => `$${idx++}`);
+            const res = await this.pool.query(pgSql, params);
+            return {
+              lastID: res.rows && res.rows[0] ? res.rows[0].id : 0,
+              changes: res.rowCount || 0
+            };
+          }
+          async exec(sql) {
+            await this.pool.query(sql);
+          }
+          save() {}
+        }
+
+        const pgInstance = new PostgresWrapper(pool);
+        db = pgInstance;
+        return db;
+      } catch (pgErr) {
+        console.warn(`[Database] PostgreSQL initialization warning (${pgErr.message}). Falling back to local SQLite engine.`);
+      }
+    }
+
+    // Initialize WebAssembly SQLite (Local or Remote Snapshot Fallback)
     const SQL = await initSqlJs({
       locateFile: file => {
         const possibleWasmPaths = [
@@ -95,9 +219,9 @@ async function initDB() {
       }
     });
 
-    let dbPath = path.join(__dirname, 'blog.db');
-    
-    if (process.env.VERCEL) {
+    let dbPath = config.localPath;
+
+    if (process.env.VERCEL && !config.customPath) {
       const possibleSourcePaths = [
         path.join(__dirname, 'blog.db'),
         path.join(__dirname, '../server/blog.db'),
@@ -123,8 +247,8 @@ async function initDB() {
       dbPath = tempDbPath;
     }
 
-    let fileBuffer = null;
-    if (fs.existsSync(dbPath)) {
+    let fileBuffer = remoteBuffer;
+    if (!fileBuffer && fs.existsSync(dbPath)) {
       try {
         fileBuffer = fs.readFileSync(dbPath);
       } catch (err) {
@@ -274,7 +398,6 @@ function extractProsConsFromContent(content) {
     }
   }
 
-  // Remove the raw pros-cons-grid HTML block so it does not leak raw HTML in content
   cleanedContent = cleanedContent.replace(/## Pros & Cons Breakdown[\s\S]*?(?:<\/div>\s*<\/div>|<div class="pros-cons-grid">[\s\S]*?<\/div>\s*<\/div>)/gi, '');
   cleanedContent = cleanedContent.replace(/<div class="pros-cons-grid">[\s\S]*?<\/div>\s*<\/div>/gi, '');
   cleanedContent = cleanedContent.replace(/---\s*---/g, '---').trim();
@@ -387,5 +510,6 @@ function getDB() {
 
 module.exports = {
   initDB,
-  getDB
+  getDB,
+  getDbConfig
 };
